@@ -1,11 +1,10 @@
+import cv2
+import numpy as np
 import pyaudio
 import wave
 
 def record():
-    import cv2
-    import numpy as np
-    import pyaudio
-    import wave
+
 
     # Set the number of channels, sample rate, and recording duration
     num_channels = 16
