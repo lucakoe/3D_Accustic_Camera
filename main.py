@@ -1,16 +1,44 @@
-# This is a sample Python script.
+import pyaudio
+import wave
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+def recordAudio():
 
+    # Set the number of channels, sample rate, and recording duration
+    num_channels = 16
+    sample_rate = 44100
+    duration = 5  # in seconds
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+    # Initialize PyAudio
+    audio = pyaudio.PyAudio()
 
+    # Open a new audio stream for recording
+    stream = audio.open(format=pyaudio.paInt16,
+                        channels=num_channels,
+                        rate=sample_rate,
+                        input=True,
+                        frames_per_buffer=1024)
+
+    # Start recording
+    frames = []
+    for i in range(0, int(sample_rate / 1024 * duration)):
+        data = stream.read(1024)
+        frames.append(data)
+
+    # Stop recording and close the audio stream
+    stream.stop_stream()
+    stream.close()
+    audio.terminate()
+
+    # Save the recorded audio to a WAV file
+    wave_file = wave.open("recording.wav", "wb")
+    wave_file.setnchannels(num_channels)
+    wave_file.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
+    wave_file.setframerate(sample_rate)
+    wave_file.writeframes(b"".join(frames))
+    wave_file.close()
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    recordAudio()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
