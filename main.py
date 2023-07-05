@@ -1,3 +1,5 @@
+import time
+
 import cv2
 import numpy as np
 import pyaudio
@@ -8,7 +10,7 @@ def record():
 
     # Set the number of channels, sample rate, and recording duration
     num_channels = 16
-    sample_rate = 44100
+    sample_rate = 48000
     duration = 5  # in seconds
 
     # Set the video dimensions and frame rate
@@ -31,18 +33,23 @@ def record():
     video_out = cv2.VideoWriter('recording.mp4', fourcc, fps, (width, height))
 
     # Initialize video capture
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
     # Start recording
     frames = []
-    for i in range(0, int(sample_rate / 1024 * duration)):
+    audio_frames = []
+    start_time = time.time()
+    while time.time() - start_time < duration:
+        # Capture audio frame
         data = stream.read(1024)
-        frames.append(data)
-        # Capture video frame at the same time as audio
+        audio_frames.append(data)
+
+        # Capture video frame
         ret, frame = cap.read()
         if ret:
             frame = cv2.resize(frame, (width, height))
             video_out.write(frame)
+            frames.append(frame)
 
     # Stop recording and close the audio and video streams
     stream.stop_stream()
@@ -56,10 +63,16 @@ def record():
     wave_file.setnchannels(num_channels)
     wave_file.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
     wave_file.setframerate(sample_rate)
-    wave_file.writeframes(b"".join(frames))
+    wave_file.writeframes(b"".join(audio_frames))
     wave_file.close()
 
+    # Check the length of the audio and video data arrays
+    print("Length of audio data:", len(audio_frames))
+    print("Length of video data:", len(frames))
 
+    # Check the actual frame rate of the video capture device
+    actual_fps = cap.get(cv2.CAP_PROP_FPS)
+    print("Actual frame rate:", actual_fps)
 
 
 
@@ -68,7 +81,7 @@ def recordAudio():
     # Set the number of channels, sample rate, and recording duration
     num_channels = 16
     sample_rate = 44100
-    duration = 30  # in seconds
+    duration = 90  # in seconds
 
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
@@ -102,6 +115,6 @@ def recordAudio():
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    recordAudio()
+    record()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
