@@ -6,17 +6,10 @@ import pyaudio
 import wave
 
 def record():
-
-
     # Set the number of channels, sample rate, and recording duration
     num_channels = 16
-    sample_rate = 48000
-    duration = 5  # in seconds
-
-    # Set the video dimensions and frame rate
-    width = 640
-    height = 480
-    fps = 30
+    sample_rate = 44100
+    duration = 20 # in seconds
 
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
@@ -29,6 +22,9 @@ def record():
                         frames_per_buffer=1024)
 
     # Initialize video recording
+    width = 640
+    height = 480
+    fps = 30
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     video_out = cv2.VideoWriter('recording.mp4', fourcc, fps, (width, height))
 
@@ -38,8 +34,8 @@ def record():
     # Start recording
     frames = []
     audio_frames = []
-    start_time = time.time()
-    while time.time() - start_time < duration:
+    num_audio_frames = int(duration * sample_rate / 1024)
+    for i in range(num_audio_frames):
         # Capture audio frame
         data = stream.read(1024)
         audio_frames.append(data)
@@ -73,9 +69,6 @@ def record():
     # Check the actual frame rate of the video capture device
     actual_fps = cap.get(cv2.CAP_PROP_FPS)
     print("Actual frame rate:", actual_fps)
-
-
-
 def recordAudio():
 
     # Set the number of channels, sample rate, and recording duration
