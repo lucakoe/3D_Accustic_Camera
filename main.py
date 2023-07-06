@@ -1,15 +1,15 @@
 import time
-
 import cv2
 import numpy as np
 import pyaudio
 import wave
+import csv
 
 def record():
     # Set the number of channels, sample rate, and recording duration
     num_channels = 16
     sample_rate = 44100
-    duration = 20 # in seconds
+    duration = 5 # in seconds
 
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
@@ -24,21 +24,31 @@ def record():
     # Initialize video recording
     width = 640
     height = 480
-    fps = 30
+    fps = 25
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     video_out = cv2.VideoWriter('recording.mp4', fourcc, fps, (width, height))
 
     # Initialize video capture
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
+    # Initialize CSV writer
+    csv_file = open('audio_video_timestamps.csv', mode='w', newline='')
+    csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    csv_writer.writerow(['Time (s)', 'Video Frame Number', 'Audio Frame Number'])
+
     # Start recording
     frames = []
+    start_time = time.time()
+    audio_frame_num = 0
+    video_frame_num = 0
     audio_frames = []
     num_audio_frames = int(duration * sample_rate / 1024)
     for i in range(num_audio_frames):
         # Capture audio frame
         data = stream.read(1024)
         audio_frames.append(data)
+        audio_frame_num += 1
+        audio_time = time.time() - start_time
 
         # Capture video frame
         ret, frame = cap.read()
@@ -46,6 +56,10 @@ def record():
             frame = cv2.resize(frame, (width, height))
             video_out.write(frame)
             frames.append(frame)
+            video_frame_num += 1
+            # Save the corresponding time of the audio frame in a CSV file
+            csv_writer.writerow([audio_time, video_frame_num, audio_frame_num])
+
 
     # Stop recording and close the audio and video streams
     stream.stop_stream()
@@ -69,6 +83,13 @@ def record():
     # Check the actual frame rate of the video capture device
     actual_fps = cap.get(cv2.CAP_PROP_FPS)
     print("Actual frame rate:", actual_fps)
+
+    # Close the CSV file
+    csv_file.close()
+
+
+
+
 def recordAudio():
 
     # Set the number of channels, sample rate, and recording duration
