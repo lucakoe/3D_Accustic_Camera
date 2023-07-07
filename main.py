@@ -8,13 +8,13 @@ import time
 import threading
 import avsync
 
-#from usvcam import tool as usv_tool
+# from usvcam import tool as usv_tool
 
 # Global variable for current audio frame
 current_audio_frame = 0
 start_time = 0
 
-#General settings
+# General settings
 duration = 20  # in seconds
 audio_recording_out_path = './recording.wav'
 video_recording_out_path = './recording.mp4'
@@ -23,9 +23,8 @@ output_path = './video_audio.mp4'
 
 # Audio settings
 num_channels = 16
-sample_rate = 48000 # carefull use the same as the audio device in the system settings
+sample_rate = 48000  # carefull use the same as the audio device in the system settings
 chunk = 1024
-
 
 # Video settings
 width = 640
@@ -39,7 +38,7 @@ def record_audio(stream, audio_frames, num_audio_frames):
     start_time = time.time()
     for i in range(num_audio_frames):
         # Calculate the expected timestamp of the current audio frame
-        expected_audio_time = current_audio_frame *(duration/num_audio_frames)
+        expected_audio_time = current_audio_frame * (duration / num_audio_frames)
 
         # Wait until the expected timestamp is reached
         while (time.time() - start_time) < expected_audio_time:
@@ -49,6 +48,7 @@ def record_audio(stream, audio_frames, num_audio_frames):
         data = stream.read(chunk)
         audio_frames.append(data)
         current_audio_frame += 1
+
 
 def record_video(cap, video_out, frames, num_video_frames, csv_writer):
     global current_audio_frame, sample_rate, width, height, fps
@@ -62,7 +62,7 @@ def record_video(cap, video_out, frames, num_video_frames, csv_writer):
 
             audio_position_file = current_audio_frame * chunk
             # Save the timestamps to the CSV file
-            csv_writer.writerow([time.time()-start_time, i+1, current_audio_frame,audio_position_file])
+            csv_writer.writerow([time.time() - start_time, i + 1, current_audio_frame, audio_position_file])
 
 
 def record():
@@ -97,7 +97,8 @@ def record():
         # Start recording video in a separate thread
         frames = []
         num_video_frames = int(duration * fps)
-        video_thread = threading.Thread(target=record_video, args=(cap, video_out, frames, num_video_frames, csv_writer))
+        video_thread = threading.Thread(target=record_video,
+                                        args=(cap, video_out, frames, num_video_frames, csv_writer))
         video_thread.start()
 
         # Wait for both threads to finish
@@ -124,13 +125,11 @@ def record():
         print("Length of audio data:", len(audio_frames))
         print("Length of video data:", len(frames))
 
-
         # Close the CSV file
         csv_file.close()
 
+
 if __name__ == '__main__':
     record()
-    avsync.combine_vid_and_audio(audio_recording_out_path, video_recording_out_path, syncfile_path, output_path, fps, sample_rate, cam_delay)
-
-
-
+    avsync.combine_vid_and_audio(audio_recording_out_path, video_recording_out_path, syncfile_path, output_path, fps,
+                                 sample_rate, cam_delay)
