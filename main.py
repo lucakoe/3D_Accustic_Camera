@@ -14,16 +14,25 @@ import avsync
 current_audio_frame = 0
 start_time = 0
 
-# Set the number of channels, sample rate, and recording duration
+#General settings
+duration = 20  # in seconds
+audio_recording_out_path = './recording.wav'
+video_recording_out_path = './recording.mp4'
+syncfile_path = './audio_video_timestamps.csv'
+output_path = './video_audio.mp4'
+
+# Audio settings
 num_channels = 16
 sample_rate = 48000 # carefull use the same as the audio device in the system settings
 chunk = 1024
-duration = 5  # in seconds
+
 
 # Video settings
 width = 640
 height = 480
 fps = 25
+cam_delay = 0.0
+
 
 def record_audio(stream, audio_frames, num_audio_frames):
     global current_audio_frame, sample_rate, start_time
@@ -69,13 +78,13 @@ def record():
 
     # Initialize video recording
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_out = cv2.VideoWriter('recording.mp4', fourcc, fps, (width, height))
+    video_out = cv2.VideoWriter(video_recording_out_path, fourcc, fps, (width, height))
 
     # Initialize video capture
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
     # Initialize CSV writer
-    with open('audio_video_timestamps.csv', mode='w', newline='') as csv_file:
+    with open(syncfile_path, mode='w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         csv_writer.writerow(['Time (s)', 'Video Frame Number', 'Audio Frame Number', 'Audio Position in file'])
 
@@ -104,7 +113,7 @@ def record():
         cv2.destroyAllWindows()
 
         # Save the recorded audio to a WAV file
-        wave_file = wave.open("recording.wav", "wb")
+        wave_file = wave.open(audio_recording_out_path, "wb")
         wave_file.setnchannels(num_channels)
         wave_file.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
         wave_file.setframerate(sample_rate)
@@ -115,17 +124,13 @@ def record():
         print("Length of audio data:", len(audio_frames))
         print("Length of video data:", len(frames))
 
-        # Check the actual frame rate of the video capture device
-        actual_fps = cap.get(cv2.CAP_PROP_FPS)
-        print("Actual frame rate:", actual_fps)
-
-        # Get the total number of video frames captured
-        total_video_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        print("Total video frames:", total_video_frames)
 
         # Close the CSV file
         csv_file.close()
 
 if __name__ == '__main__':
     record()
+    avsync.combine_vid_and_audio(audio_recording_out_path, video_recording_out_path, syncfile_path, output_path, fps, sample_rate, cam_delay)
+
+
 
