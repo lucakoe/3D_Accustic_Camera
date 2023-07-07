@@ -8,14 +8,13 @@ import time
 import threading
 import avsync
 
-# from usvcam import tool as usv_tool
 
 # Global variable for current audio frame
 current_audio_frame = 0
 start_time = 0
 
 # General settings
-duration = 20  # in seconds
+duration = 5  # in seconds
 audio_recording_out_path = './recording.wav'
 video_recording_out_path = './recording.mp4'
 syncfile_path = './audio_video_timestamps.csv'
@@ -81,7 +80,11 @@ def record():
     video_out = cv2.VideoWriter(video_recording_out_path, fourcc, fps, (width, height))
 
     # Initialize video capture
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW,)
+    cap.set(cv2.CAP_PROP_FPS, fps)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
 
     # Initialize CSV writer
     with open(syncfile_path, mode='w', newline='') as csv_file:
