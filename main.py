@@ -1,3 +1,4 @@
+import os
 import cv2
 import numpy as np
 import pyaudio
@@ -5,13 +6,18 @@ import wave
 import csv
 import time
 import threading
+import avsync
+
+#from usvcam import tool as usv_tool
 
 # Global variable for current audio frame
 current_audio_frame = 0
+start_time = 0
 
 # Set the number of channels, sample rate, and recording duration
 num_channels = 16
-sample_rate = 44100
+sample_rate = 48000 # carefull use the same as the audio device in the system settings
+chunk = 1024
 duration = 5  # in seconds
 
 # Video settings
@@ -20,10 +26,18 @@ height = 480
 fps = 25
 
 def record_audio(stream, audio_frames, num_audio_frames):
-    global current_audio_frame, sample_rate
+    global current_audio_frame, sample_rate, start_time
+    start_time = time.time()
     for i in range(num_audio_frames):
+        # Calculate the expected timestamp of the current audio frame
+        expected_audio_time = current_audio_frame *(duration/num_audio_frames)
+
+        # Wait until the expected timestamp is reached
+        while (time.time() - start_time) < expected_audio_time:
+            time.sleep(0.001)
+
         # Capture audio frame
-        data = stream.read(1024)
+        data = stream.read(chunk)
         audio_frames.append(data)
         current_audio_frame += 1
 
@@ -36,13 +50,10 @@ def record_video(cap, video_out, frames, num_video_frames, csv_writer):
             frame = cv2.resize(frame, (width, height))
             video_out.write(frame)
             frames.append(frame)
-            # Calculate the corresponding time of the audio frame
-            if fps == 0:
-                audio_time = 0
-            else:
-                audio_time = (i / fps) + (current_audio_frame / sample_rate)
+
+            audio_position_file = current_audio_frame * chunk
             # Save the timestamps to the CSV file
-            csv_writer.writerow([audio_time, i+1, int(audio_time * sample_rate)])
+            csv_writer.writerow([time.time()-start_time, i+1, current_audio_frame,audio_position_file])
 
 
 def record():
@@ -54,7 +65,7 @@ def record():
                         channels=num_channels,
                         rate=sample_rate,
                         input=True,
-                        frames_per_buffer=1024)
+                        frames_per_buffer=chunk)
 
     # Initialize video recording
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -66,11 +77,11 @@ def record():
     # Initialize CSV writer
     with open('audio_video_timestamps.csv', mode='w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow(['Time (s)', 'Video Frame Number', 'Audio Frame Number'])
+        csv_writer.writerow(['Time (s)', 'Video Frame Number', 'Audio Frame Number', 'Audio Position in file'])
 
         # Start recording audio in a separate thread
         audio_frames = []
-        num_audio_frames = int(duration * sample_rate / 1024)
+        num_audio_frames = int(duration * sample_rate / chunk)
         audio_thread = threading.Thread(target=record_audio, args=(stream, audio_frames, num_audio_frames))
         audio_thread.start()
 
@@ -117,3 +128,4 @@ def record():
 
 if __name__ == '__main__':
     record()
+
