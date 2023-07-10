@@ -14,7 +14,7 @@ current_audio_frame = 0
 start_time = 0
 
 # General settings
-duration = 5  # in seconds
+duration = 20  # in seconds
 audio_recording_out_path = './recording.wav'
 video_recording_out_path = './recording.mp4'
 syncfile_path = './audio_video_timestamps.csv'

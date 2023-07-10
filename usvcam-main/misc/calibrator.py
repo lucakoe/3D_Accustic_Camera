@@ -1,13 +1,10 @@
 # legacy app: mic pos calibration with a 40kHz ultrasonic distance sensor
 
 import numpy as np
-import math
 import time
 import cv2
 import copy
 
-import nidaqmx
-import nidaqmx.stream_readers
 import nidaqmx.constants
 
 import pyrealsense2 as rs
@@ -19,9 +16,6 @@ import h5py
 import platform
 if platform.system() == "Windows":
     import winsound
-
-import scipy.signal
-import scipy.optimize
 
 import datetime
 import yaml

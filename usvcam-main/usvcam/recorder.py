@@ -1,6 +1,4 @@
 import numpy as np
-import math
-import time
 import cv2
 import copy
 
@@ -10,9 +8,7 @@ import nidaqmx.constants
 
 import pyrealsense2 as rs
 
-import scipy.io
 import scipy.signal as signal
-from scipy.ndimage import median_filter
 
 import h5py
 import sys
