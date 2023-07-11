@@ -9,7 +9,6 @@ def combine_vid_and_audio(wavfile, vidfile, syncfile, outvidfile, vid_fps=30, au
     tmp_vidfile = './data/tmp.mp4'
 
     T = np.genfromtxt(syncfile, delimiter=',', skip_header=1)
-    T = T[:, [0, 3]]
 
     T[:,1] = T[:,1]/audio_fs
     t = np.arange(0, T[-10,1], 1/vid_fps)

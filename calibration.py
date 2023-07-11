@@ -34,6 +34,8 @@ def generateMicPosFile(mic_array_position, mic_array_arrangement=[
     # Create datasets
     result = np.add(np.array(mic_array_arrangement), np.array(mic_array_position))
 
+    result = result / 1000
+
     with h5py.File("./data/micpos.h5", mode='w') as f:
         f.create_dataset('/result/micpos', data=result)
 
@@ -45,14 +47,10 @@ def checkMicPosFile(path):
 
 
 def wav2dat(data_dir):
-    A = scipy.io.wavfile.read(data_dir + '/audio.wav')
+    A = scipy.io.wavfile.read(data_dir + '/cut_audio.wav')
     max_int16 = 32767
     max_int32 = 2147483647
-    X = A[1] * max_int16
-    X = X.astype(np.int16)
-    X = X.T
-    if X.shape[1] == 5:
-        X = X[:, 1:]
+    X = A[1]
 
     with open(data_dir + '/snd.dat', 'wb') as f:
         f.write(X.tobytes())
@@ -96,7 +94,7 @@ def create_paramfile(data_dir, image_width=640, image_height=768, daq_fs=192000,
 
 if __name__ == '__main__':
     #generateMicPosFile([13, -35, 8])
-    checkMicPosFile('usvcam-main/test_data/micpos.h5')
-    # checkMicPosFile('usvcam-main/test_data/micpos_custom.h5')
+    checkMicPosFile('usvcam_main/test_data/micpos.h5')
+    # checkMicPosFile('usvcam_main/test_data/micpos_custom.h5')
     checkMicPosFile(('data/micpos.h5'))
     wav2dat("./data/2023-07-11-15-14-36")

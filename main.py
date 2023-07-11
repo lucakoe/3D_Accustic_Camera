@@ -8,7 +8,7 @@ import threading
 import avsync
 import os
 import datetime
-import usvcam.analysis
+import usvcam_main.usvcam.analysis as analysis
 
 import calibration
 
@@ -17,7 +17,7 @@ current_audio_frame = 0
 start_time = 0
 
 # General settings
-duration = 5  # in seconds
+duration = 20  # in seconds
 audio_recording_out_filename = 'audio.wav'
 video_recording_out_filename = 'vid.mp4'
 syncfile_filename = 'sync.csv'
@@ -68,7 +68,7 @@ def record_video(cap, video_out, frames, num_video_frames, csv_writer):
 
             audio_position_file = current_audio_frame * chunk
             # Save the timestamps to the CSV file
-            csv_writer.writerow([time.time() - start_time, i + 1, current_audio_frame, audio_position_file])
+            csv_writer.writerow([time.time() - start_time, audio_position_file])
 
 
 def record(output_path):
@@ -101,7 +101,7 @@ def record(output_path):
     # Initialize CSV writer
     with open(syncfile_path, mode='w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow(['Time (s)', 'Video Frame Number', 'Audio Frame Number', 'Audio Position in file'])
+        # csv_writer.writerow(['Time (s)', 'Video Frame Number', 'Audio Frame Number', 'Audio Position in file'])
 
         # Start recording audio in a separate thread
         audio_frames = []
@@ -176,35 +176,38 @@ def rearrange_wav_channels(input_file, channel_order, output_file):
 
 
 if __name__ == '__main__':
-    # # Get the current date and time
-    # now = datetime.datetime.now()
-    # timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
-    #
-    # # Create a new directory for this recording
-    # data_dir = os.path.join("data", timestamp)
-    # os.makedirs(data_dir)
-    # record(data_dir)
-    # cut_wav_channels(os.path.join(data_dir, audio_recording_out_filename), [3 - 1, 5 - 1, 12 - 1, 14 - 1],
-    #                  os.path.join(data_dir, 'cut_' + audio_recording_out_filename))
-    #
-    # # arrange from left top to right bottom
-    # rearrange_wav_channels(os.path.join(data_dir, 'cut_' + audio_recording_out_filename), [3, 2, 0, 1],
-    #                        os.path.join(data_dir,
-    #                                     'cut_' + audio_recording_out_filename))
-    #
-    # avsync.combine_vid_and_audio(os.path.join(data_dir, 'cut_' + audio_recording_out_filename),
-    #                              os.path.join(data_dir, video_recording_out_filename),
-    #                              os.path.join(data_dir, syncfile_filename),
-    #                              os.path.join(data_dir, output_filename), fps, sample_rate, cam_delay)
+    # Get the current date and time
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
+
+    # Create a new directory for this recording
+    data_dir = os.path.join("data", timestamp)
+    os.makedirs(data_dir)
+    record(data_dir)
+    cut_wav_channels(os.path.join(data_dir, audio_recording_out_filename), [3 - 1, 5 - 1, 12 - 1, 14 - 1],
+                     os.path.join(data_dir, 'cut_' + audio_recording_out_filename))
+
+    # arrange from left top to right bottom
+    rearrange_wav_channels(os.path.join(data_dir, 'cut_' + audio_recording_out_filename), [3, 2, 0, 1],
+                           os.path.join(data_dir,
+                                        'cut_' + audio_recording_out_filename))
+
+    avsync.combine_vid_and_audio(os.path.join(data_dir, 'cut_' + audio_recording_out_filename),
+                                 os.path.join(data_dir, video_recording_out_filename),
+                                 os.path.join(data_dir, syncfile_filename),
+                                 os.path.join(data_dir, output_filename), fps, sample_rate, cam_delay)
 
     # TODO temporary
-    data_dir = os.path.join("data", "2023-07-11-15-14-36")
+    # data_dir = os.path.join("data", "2023-07-11-16-40-28")
     calibration.wav2dat(data_dir)
 
     # analisis part
-    usvcam.analysis.dat2wav(data_dir, 3)
+    calibration.create_paramfile(data_dir, width, height, sample_rate, 4)
+    analysis.dat2wav(data_dir, 3)
     # USV segmentation
     input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
     calibration.generateMicPosFile(mic_array_position)
-    calibration.create_paramfile(data_dir, width, height, sample_rate, 4)
-    usvcam.analysis.assign_vocalizations(data_dir, calib_path, os.path.join(data_dir, parameter_filename), 1)
+
+
+    analysis.create_localization_video(data_dir, calib_path, color_eq=False)
+
