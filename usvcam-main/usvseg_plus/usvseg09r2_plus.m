@@ -1116,6 +1116,28 @@ freqmin = params.freqmin;
 freqmax = params.freqmax;
 % multitaper spec
 mtsp = multitaperspec(wav,fs,fftsize,timestep,1);
+
+% ignore specific band
+if exist('band_ignore.csv', 'file')
+    bands = dlmread('band_ignore.csv', ',');
+    
+    x = 1:size(mtsp,1);
+    I = logical(ones(size(mtsp,1),1));
+    for i=1:size(bands,1)
+        f1 = floor(bands(i,1)/fs*fftsize)+1;
+        f2 = floor(bands(i,2)/fs*fftsize)+1;
+        I(f1:f2) = 0;
+    end
+    
+    mtsp2 = mtsp;
+    
+    for j=1:size(mtsp,2)
+        mtsp2(:,j) = interp1(x(I),mtsp(I,j),x);
+    end
+    
+    mtsp = mtsp2;
+end
+
 % flattening
 [fltnd,med] = flattening(mtsp,med);
 % threshold calculation with n*sigma (SD) of background noise 
@@ -1347,6 +1369,10 @@ nid = ~isnan(freq);
 npf = freq(nid);
 npf = [mean(npf); npf; mean(npf)];
 nT = [1/fs; tvec(nid)'; max(tvec)];
+
+[nT, ia, ic] = unique(nT);
+npf = npf(ia);
+
 p = interp1(nT,npf,rt);
 pm = p/(fs/2)*(freqmap(2)-freqmap(1))+freqmap(1);
 pm(pm<100) = 100; % lower limit
