@@ -6,7 +6,7 @@ import os
 
 def combine_vid_and_audio(wavfile, vidfile, syncfile, outvidfile, vid_fps=30, audio_fs=44100, cam_delay=0.0):
 
-    tmp_vidfile = './tmp.mp4'
+    tmp_vidfile = './data/tmp.mp4'
 
     T = np.genfromtxt(syncfile, delimiter=',', skip_header=1)
     T = T[:, [0, 3]]
@@ -37,8 +37,8 @@ def combine_vid_and_audio(wavfile, vidfile, syncfile, outvidfile, vid_fps=30, au
 if __name__ == '__main__':
 
     wavfile = './recording.wav'
-    vidfile = './recording.mp4'
-    syncfile = './audio_video_timestamps.csv'
+    vidfile = './vid.mp4'
+    syncfile = './sync.csv'
     outvidfile = './video_audio.mp4'
     vid_fps = 30
     audio_fs = 44100
