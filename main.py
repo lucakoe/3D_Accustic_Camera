@@ -10,6 +10,7 @@ import os
 import datetime
 import usvcam.analysis
 
+import calibration
 
 # Global variable for current audio frame
 current_audio_frame = 0
@@ -17,9 +18,9 @@ start_time = 0
 
 # General settings
 duration = 5  # in seconds
-audio_recording_out_filename = 'recording.wav'
+audio_recording_out_filename = 'audio.wav'
 video_recording_out_filename = 'vid.mp4'
-syncfile_filename = 'audio_video_timestamps.csv'
+syncfile_filename = 'sync.csv'
 output_filename = 'video_audio.mp4'
 
 # Audio settings
@@ -66,19 +67,11 @@ def record_video(cap, video_out, frames, num_video_frames, csv_writer):
             csv_writer.writerow([time.time() - start_time, i + 1, current_audio_frame, audio_position_file])
 
 
-def record():
-    # Get the current date and time
-    now = datetime.datetime.now()
-    timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
-
-    # Create a new directory for this recording
-    directory = os.path.join("data", timestamp)
-    os.makedirs(directory)
-
+def record(output_path):
     # Set the paths for the output files
-    audio_recording_out_path = os.path.join(directory, "audio.wav")
-    video_recording_out_path = os.path.join(directory, "video.mp4")
-    syncfile_path = os.path.join(directory, "sync.csv")
+    audio_recording_out_path = os.path.join(directory, audio_recording_out_filename)
+    video_recording_out_path = os.path.join(directory, video_recording_out_filename)
+    syncfile_path = os.path.join(directory, syncfile_filename)
 
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
@@ -95,7 +88,7 @@ def record():
     video_out = cv2.VideoWriter(video_recording_out_path, fourcc, fps, (width, height))
 
     # Initialize video capture
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW,)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW, )
     cap.set(cv2.CAP_PROP_FPS, fps)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
@@ -146,7 +139,6 @@ def record():
         csv_file.close()
 
 
-
 def cut_wav_channels(input_file, channels_to_keep, output_file):
     with wave.open(input_file, 'rb') as wav:
         channels = wav.getnchannels()
@@ -160,6 +152,7 @@ def cut_wav_channels(input_file, channels_to_keep, output_file):
             new_wav.setframerate(sample_rate)
             new_wav.writeframes(wav_data.tobytes())
     return output_file
+
 
 def rearrange_wav_channels(input_file, channel_order, output_file):
     with wave.open(input_file, 'rb') as wav:
@@ -175,12 +168,29 @@ def rearrange_wav_channels(input_file, channel_order, output_file):
             new_wav.writeframes(wav_data.tobytes())
     return output_file
 
+
 if __name__ == '__main__':
-    record()
-    #cut_wav_channels(audio_recording_out_filename, [1, 7, 9, 15, ], audio_recording_out_filename)
-    #avsync.combine_vid_and_audio(audio_recording_out_filename, video_recording_out_filename, syncfile_filename, output_filename, fps, sample_rate, cam_delay)
+    # Get the current date and time
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
 
+    # Create a new directory for this recording
+    directory = os.path.join("data", timestamp)
+    os.makedirs(directory)
+    record(directory)
+    cut_wav_channels(os.path.join(directory, audio_recording_out_filename), [3 - 1, 5 - 1, 12 - 1, 14 - 1],
+                     os.path.join(directory, 'cut_' + audio_recording_out_filename))
+
+    # arrange from left top to right bottom
+    rearrange_wav_channels(os.path.join(directory, 'cut_' + audio_recording_out_filename), [3, 2, 0, 1],
+                           os.path.join(directory,
+                                        'cut_' + audio_recording_out_filename))
+
+    avsync.combine_vid_and_audio(os.path.join(directory, 'cut_' + audio_recording_out_filename),
+                                 os.path.join(directory, video_recording_out_filename),
+                                 os.path.join(directory, syncfile_filename),
+                                 os.path.join(directory, output_filename), fps, sample_rate, cam_delay)
+
+    calibration.generateMicPosFile([13, -35, 8])
     # USV segmentation
-
-    input("Do USV segmentation and press Enter to continue...")
-
+    input(directory + "\n" + "Do USV segmentation and press Enter to continue...")
