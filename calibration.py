@@ -7,6 +7,7 @@ import numpy as np
 import scipy.io
 import cv2
 
+
 def generateCalibrationTone():
     # Create an empty AudioSegment
     result = AudioSegment.silent(duration=0)  # Loop over 0-14
@@ -24,13 +25,15 @@ def generateCalibrationTone():
     result.export("ascending_tone.wav", format="wav")
 
 
-def generateMicPosFile(micArrayPos):
+def generateMicPosFile(mic_array_position, mic_array_arrangement=[
+    [0.0, 0.0, 0.0],  # Mic 14
+    [42.0 * 1, 0.0, 0.0],  # Mic 12
+    [0.0, 42.0 * 1, 0.0],  # Mic 3
+    [42.0 * 1, 42.0 * 1, 0.0]]  # Mic 5
+                       ):
     # Create datasets
     # TODO pos relative to camera; smaller array
-    result = np.array([[0.0, 42.0 * 3, 0.0],  # Mic 2
-                       [0.0, 0.0, 0.0],  # Mic 8
-                       [42.0 * 3, 0.0, 0.0],  # Mic 9
-                       [42.0 * 3, 42.0 * 3, 0.0]])  # Mic 15
+    result = np.add(np.array(mic_array_arrangement),np.array(mic_array_position))
 
     with h5py.File("./data/micpos.h5", mode='w') as f:
         f.create_dataset('/result/micpos', data=result)
@@ -40,7 +43,6 @@ def checkMicPosFile(path):
     with h5py.File(path, 'r') as f:
         print(f.keys())
         print(f['result/micpos'][()])
-
 
 
 def mat2dat(data_dir):
@@ -56,6 +58,7 @@ def mat2dat(data_dir):
 
     with open(data_dir + '/snd.dat', 'wb') as f:
         f.write(X.tobytes())
+
 
 def create_paramfile(data_dir):
     pressure_calib = np.array([1, 1, 1, 1], dtype=float)
@@ -101,7 +104,7 @@ def create_paramfile(data_dir):
 
 
 if __name__ == '__main__':
-    generateMicPosFile()
+    generateMicPosFile([13, -35, 8])
     checkMicPosFile('usvcam-main/test_data/micpos.h5')
     # checkMicPosFile('usvcam-main/test_data/micpos_custom.h5')
     checkMicPosFile(('data/micpos.h5'))
