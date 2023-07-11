@@ -1,4 +1,3 @@
-import os
 import cv2
 import numpy as np
 import pyaudio
@@ -7,6 +6,9 @@ import csv
 import time
 import threading
 import avsync
+import os
+import datetime
+import usvcam.analysis
 
 
 # Global variable for current audio frame
@@ -14,11 +16,11 @@ current_audio_frame = 0
 start_time = 0
 
 # General settings
-duration = 20  # in seconds
-audio_recording_out_path = './recording.wav'
-video_recording_out_path = './recording.mp4'
-syncfile_path = './audio_video_timestamps.csv'
-output_path = './video_audio.mp4'
+duration = 5  # in seconds
+audio_recording_out_filename = 'recording.wav'
+video_recording_out_filename = 'vid.mp4'
+syncfile_filename = 'audio_video_timestamps.csv'
+output_filename = 'video_audio.mp4'
 
 # Audio settings
 num_channels = 16
@@ -65,6 +67,19 @@ def record_video(cap, video_out, frames, num_video_frames, csv_writer):
 
 
 def record():
+    # Get the current date and time
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
+
+    # Create a new directory for this recording
+    directory = os.path.join("data", timestamp)
+    os.makedirs(directory)
+
+    # Set the paths for the output files
+    audio_recording_out_path = os.path.join(directory, "audio.wav")
+    video_recording_out_path = os.path.join(directory, "video.mp4")
+    syncfile_path = os.path.join(directory, "sync.csv")
+
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
 
@@ -84,7 +99,6 @@ def record():
     cap.set(cv2.CAP_PROP_FPS, fps)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-
 
     # Initialize CSV writer
     with open(syncfile_path, mode='w', newline='') as csv_file:
@@ -132,7 +146,41 @@ def record():
         csv_file.close()
 
 
+
+def cut_wav_channels(input_file, channels_to_keep, output_file):
+    with wave.open(input_file, 'rb') as wav:
+        channels = wav.getnchannels()
+        sample_rate = wav.getframerate()
+        wav_data = np.frombuffer(wav.readframes(-1), dtype=np.int16)
+        wav_data = np.reshape(wav_data, (-1, channels))
+        wav_data = wav_data[:, channels_to_keep]
+        with wave.open(output_file, 'wb') as new_wav:
+            new_wav.setnchannels(wav_data.shape[1])
+            new_wav.setsampwidth(wav.getsampwidth())
+            new_wav.setframerate(sample_rate)
+            new_wav.writeframes(wav_data.tobytes())
+    return output_file
+
+def rearrange_wav_channels(input_file, channel_order, output_file):
+    with wave.open(input_file, 'rb') as wav:
+        channels = wav.getnchannels()
+        sample_rate = wav.getframerate()
+        wav_data = np.frombuffer(wav.readframes(-1), dtype=np.int16)
+        wav_data = np.reshape(wav_data, (-1, channels))
+        wav_data = wav_data[:, channel_order]
+        with wave.open(output_file, 'wb') as new_wav:
+            new_wav.setnchannels(wav_data.shape[1])
+            new_wav.setsampwidth(wav.getsampwidth())
+            new_wav.setframerate(sample_rate)
+            new_wav.writeframes(wav_data.tobytes())
+    return output_file
+
 if __name__ == '__main__':
     record()
-    avsync.combine_vid_and_audio(audio_recording_out_path, video_recording_out_path, syncfile_path, output_path, fps,
-                                 sample_rate, cam_delay)
+    #cut_wav_channels(audio_recording_out_filename, [1, 7, 9, 15, ], audio_recording_out_filename)
+    #avsync.combine_vid_and_audio(audio_recording_out_filename, video_recording_out_filename, syncfile_filename, output_filename, fps, sample_rate, cam_delay)
+
+    # USV segmentation
+
+    input("Do USV segmentation and press Enter to continue...")
+
