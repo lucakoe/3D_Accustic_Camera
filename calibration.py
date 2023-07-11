@@ -4,7 +4,7 @@ from pydub.generators import Sine
 from pydub.playback import play
 import h5py
 import numpy as np
-import scipy.io
+import scipy.io.wavfile
 import cv2
 
 
@@ -32,8 +32,7 @@ def generateMicPosFile(mic_array_position, mic_array_arrangement=[
     [42.0 * 1, 42.0 * 1, 0.0]]  # Mic 5
                        ):
     # Create datasets
-    # TODO pos relative to camera; smaller array
-    result = np.add(np.array(mic_array_arrangement),np.array(mic_array_position))
+    result = np.add(np.array(mic_array_arrangement), np.array(mic_array_position))
 
     with h5py.File("./data/micpos.h5", mode='w') as f:
         f.create_dataset('/result/micpos', data=result)
@@ -45,12 +44,11 @@ def checkMicPosFile(path):
         print(f['result/micpos'][()])
 
 
-def mat2dat(data_dir):
-    A = scipy.io.loadmat(data_dir + '/audio.mat5')
+def wav2dat(data_dir):
+    A = scipy.io.wavfile.read(data_dir + '/audio.wav')
     max_int16 = 32767
     max_int32 = 2147483647
-    r = max_int16 / max_int32
-    X = A['wavedata'] * r
+    X = A[1] * max_int16
     X = X.astype(np.int16)
     X = X.T
     if X.shape[1] == 5:
@@ -60,26 +58,19 @@ def mat2dat(data_dir):
         f.write(X.tobytes())
 
 
-def create_paramfile(data_dir):
+def create_paramfile(data_dir, image_width=640, image_height=768, daq_fs=192000, daq_n_ch=4, camera_fov_y=1.047198, #TODO in rad??? Logi C210 --> 60 deg
+                     camera_height=2.0):
     pressure_calib = np.array([1, 1, 1, 1], dtype=float)
     mic0pos = np.array([0.038, -0.034, 0.07], dtype=float)
-    camera_height = 2.0
 
     speedOfSound = 343.0
-    # TODO adjust camera setting
-    im_w = 640
-    im_h = 768
 
-    fovy = 0  # TODO find camera spec
-    fy = im_h / (2 * np.tan(fovy / 2))
+    fy = image_height / (2 * np.tan(camera_fov_y / 2))
 
     fx = fy
 
-    ppx = im_w / 2
-    ppy = im_h / 2
-
-    daq_fs = 192000
-    daq_n_ch = 4
+    ppx = image_width / 2
+    ppy = image_height / 2
 
     r = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1], dtype=float)
     t = np.array([0, 0, 0], dtype=float)
@@ -95,8 +86,8 @@ def create_paramfile(data_dir):
         f.create_dataset('/camera_param/color_intrin/coeffs', data=coeff)
         f.create_dataset('/camera_param/color_intrin/fx', data=fx)
         f.create_dataset('/camera_param/color_intrin/fy', data=fy)
-        f.create_dataset('/camera_param/color_intrin/width', data=im_w)
-        f.create_dataset('/camera_param/color_intrin/height', data=im_h)
+        f.create_dataset('/camera_param/color_intrin/width', data=image_width)
+        f.create_dataset('/camera_param/color_intrin/height', data=image_height)
         f.create_dataset('/camera_param/color_intrin/ppx', data=ppx)
         f.create_dataset('/camera_param/color_intrin/ppy', data=ppy)
         f.create_dataset('/camera_param/depth_to_color_extrin/rotation', data=r)
@@ -104,7 +95,8 @@ def create_paramfile(data_dir):
 
 
 if __name__ == '__main__':
-    generateMicPosFile([13, -35, 8])
+    #generateMicPosFile([13, -35, 8])
     checkMicPosFile('usvcam-main/test_data/micpos.h5')
     # checkMicPosFile('usvcam-main/test_data/micpos_custom.h5')
     checkMicPosFile(('data/micpos.h5'))
+    wav2dat("./data/2023-07-11-15-14-36")
