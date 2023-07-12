@@ -17,7 +17,6 @@ current_audio_frame = 0
 start_time = 0
 
 # General settings
-duration = 5  # in seconds
 audio_recording_out_filename = 'audio.wav'
 video_recording_out_filename = 'vid.mp4'
 syncfile_filename = 'sync.csv'
@@ -39,16 +38,18 @@ fps = 25
 cam_delay = 0.0
 
 
-def record_audio(streams, audio_frames, num_audio_frames):
+def record_audio(streams, audio_frames, stop_event):
     global current_audio_frame, sample_rate, start_time
-    start_time = time.time()
-    for i in range(num_audio_frames):
+    while not stop_event.is_set():
         # Calculate the expected timestamp of the current audio frame
-        expected_audio_time = current_audio_frame * (duration / num_audio_frames)
+        expected_audio_time = current_audio_frame * (chunk / sample_rate)
 
         # Wait until the expected timestamp is reached
-        while (time.time() - start_time) < expected_audio_time:
+        while (time.time() - start_time) < expected_audio_time and not stop_event.is_set():
             time.sleep(0.001)
+
+        if stop_event.is_set():
+            break
 
         # Capture audio frames from each stream
         data = []
@@ -58,29 +59,34 @@ def record_audio(streams, audio_frames, num_audio_frames):
         current_audio_frame += 1
 
 
-def record_video(cap, video_out, frames, num_video_frames, csv_writer):
+def record_video(cap, video_out, frames, csv_writer, stop_event):
     global current_audio_frame, sample_rate, width, height, fps
-    for i in range(num_video_frames):
+    while not stop_event.is_set():
         # Capture video frame
         ret, frame = cap.read()
-        if ret:
-            frame = cv2.resize(frame, (width, height))
-            video_out.write(frame)
-            frames.append(frame)
+        if not ret or stop_event.is_set():
+            break
 
-            audio_position_file = current_audio_frame * chunk
-            # Save the timestamps to the CSV file
-            csv_writer.writerow([time.time() - start_time, audio_position_file])
+        frame = cv2.resize(frame, (width, height))
+        video_out.write(frame)
+        frames.append(frame)
 
-            # Display live preview
-            cv2.imshow('Preview', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):  # press 'q' to exit preview
-                break
+        audio_position_file = current_audio_frame * chunk
+        # Save the timestamps to the CSV file
+        csv_writer.writerow([time.time() - start_time, audio_position_file])
+
+        # Display live preview
+        cv2.imshow('Preview', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):  # press 'q' to exit preview
+            break
 
     cv2.destroyAllWindows()
 
 
 def record(output_path):
+    print("Press Enter to start recording")
+    input()
+
     print("Start recording\n")
     # Set the paths for the output files
     audio_recording_out_path = os.path.join(data_dir, audio_recording_out_filename)
@@ -118,31 +124,23 @@ def record(output_path):
 
         # Start recording audio in a separate thread
         audio_frames = []
-        num_audio_frames = int(duration * sample_rate / chunk)
-        audio_thread = threading.Thread(target=record_audio, args=(streams, audio_frames, num_audio_frames))
+        stop_event = threading.Event()
+        audio_thread = threading.Thread(target=record_audio, args=(streams, audio_frames, stop_event))
+        audioframes = []
         audio_thread.start()
 
-        # Start recording video in a separate thread
+        # Start recording video
         frames = []
-        num_video_frames = int(duration * fps)
-        video_thread = threading.Thread(target=record_video,
-                                        args=(cap, video_out, frames, num_video_frames, csv_writer))
-        video_thread.start()
+        start_time = time.time()
+        record_video(cap, video_out, frames, csv_writer, stop_event)
 
-        # Wait for both threads to finish
+        # Stop recording audio
+        stop_event.set()
         audio_thread.join()
-        video_thread.join()
 
-        # Stop recording and close the audio and video streams
-        for stream in streams:
-            stream.stop_stream()
-            stream.close()
-        audio.terminate()
-        video_out.release()
+        # Release video capture and writer
         cap.release()
-        cv2.destroyAllWindows()
-
-        #Continued from previous message:
+        video_out.release()
 
         # Save the recorded audio to WAV files for each microphone
         for i in range(mic_array_amount):
