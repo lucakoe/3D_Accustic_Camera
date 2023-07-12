@@ -129,14 +129,27 @@ def record(output_path):
         audioframes = []
         audio_thread.start()
 
-        # Start recording video
+        # Start recording video in a separate thread
         frames = []
-        start_time = time.time()
-        record_video(cap, video_out, frames, csv_writer, stop_event)
+        record_event = threading.Event()
+        video_thread = threading.Thread(target=record_video, args=(cap, video_out, frames, csv_writer, record_event))
+        video_thread.start()
 
-        # Stop recording audio
+        # Wait for the user to stop recording
+        input("Press Enter to stop recording\n")
+
+        # Stop recording and join threads
         stop_event.set()
+        record_event.set()
         audio_thread.join()
+        video_thread.join()
+
+        # Close audio streams and PyAudio
+        for stream in streams:
+            stream.stop_stream()
+            stream.close()
+        audio.terminate()
+
 
         # Release video capture and writer
         cap.release()
