@@ -72,6 +72,13 @@ def record_video(cap, video_out, frames, num_video_frames, csv_writer):
             # Save the timestamps to the CSV file
             csv_writer.writerow([time.time() - start_time, audio_position_file])
 
+            # Display live preview
+            cv2.imshow('Preview', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):  # press 'q' to exit preview
+                break
+
+    cv2.destroyAllWindows()
+
 
 def record(output_path):
     print("Start recording\n")
