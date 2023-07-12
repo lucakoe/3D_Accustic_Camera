@@ -17,7 +17,7 @@ current_audio_frame = 0
 start_time = 0
 
 # General settings
-duration = 20  # in seconds
+duration = 5  # in seconds
 audio_recording_out_filename = 'audio.wav'
 video_recording_out_filename = 'vid.mp4'
 syncfile_filename = 'sync.csv'
@@ -139,7 +139,11 @@ def record(output_path):
 
         # Save the recorded audio to WAV files for each microphone
         for i in range(mic_array_amount):
-            audio_recording_out_path_i = f"{audio_recording_out_path[:-4]}_{i}.wav"
+            if i == 0:
+                audio_recording_out_path_i = audio_recording_out_path
+            else:
+                audio_recording_out_path_i = f"{audio_recording_out_path[:-4]}_{i}.wav"
+
             wave_file = wave.open(audio_recording_out_path_i, "wb")
             wave_file.setnchannels(num_channels)
             wave_file.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
@@ -196,28 +200,28 @@ if __name__ == '__main__':
     data_dir = os.path.join("data", timestamp)
     os.makedirs(data_dir)
     record(data_dir)
-    # cut_wav_channels(os.path.join(data_dir, audio_recording_out_filename), [3 - 1, 5 - 1, 12 - 1, 14 - 1],
-    #                  os.path.join(data_dir, 'cut_' + audio_recording_out_filename))
-    #
-    # # arrange from left top to right bottom
-    # rearrange_wav_channels(os.path.join(data_dir, 'cut_' + audio_recording_out_filename), [3, 2, 0, 1],
-    #                        os.path.join(data_dir,
-    #                                     'cut_' + audio_recording_out_filename))
-    #
-    # avsync.combine_vid_and_audio(os.path.join(data_dir, 'cut_' + audio_recording_out_filename),
-    #                              os.path.join(data_dir, video_recording_out_filename),
-    #                              os.path.join(data_dir, syncfile_filename),
-    #                              os.path.join(data_dir, output_filename), fps, sample_rate, cam_delay)
-    #
-    # # TODO temporary
-    # # data_dir = os.path.join("data", "2023-07-11-16-40-28")
-    # calibration.wav2dat(data_dir)
-    #
-    # # analisis part
-    # calibration.create_paramfile(data_dir, width, height, sample_rate, 4)
-    # analysis.dat2wav(data_dir, 3)
-    # # USV segmentation
-    # input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
-    # calibration.generateMicPosFile(mic_array_position[0])
-    #
-    # analysis.create_localization_video(data_dir, calib_path, color_eq=False)
+    cut_wav_channels(os.path.join(data_dir, audio_recording_out_filename), [3 - 1, 5 - 1, 12 - 1, 14 - 1],
+                     os.path.join(data_dir, 'cut_' + audio_recording_out_filename))
+
+    # arrange from left top to right bottom
+    rearrange_wav_channels(os.path.join(data_dir, 'cut_' + audio_recording_out_filename), [3, 2, 0, 1],
+                           os.path.join(data_dir,
+                                        'cut_' + audio_recording_out_filename))
+
+    avsync.combine_vid_and_audio(os.path.join(data_dir, 'cut_' + audio_recording_out_filename),
+                                 os.path.join(data_dir, video_recording_out_filename),
+                                 os.path.join(data_dir, syncfile_filename),
+                                 os.path.join(data_dir, output_filename), fps, sample_rate, cam_delay)
+
+    # TODO temporary
+    # data_dir = os.path.join("data", "2023-07-11-16-40-28")
+    calibration.wav2dat(data_dir)
+
+    # analisis part
+    calibration.create_paramfile(data_dir, width, height, sample_rate, 4)
+    analysis.dat2wav(data_dir, 3)
+    # USV segmentation
+    input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
+    calibration.generateMicPosFile(mic_array_position[0])
+
+    analysis.create_localization_video(data_dir, calib_path, color_eq=False)
