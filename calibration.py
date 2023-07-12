@@ -59,7 +59,7 @@ def wav2dat(data_dir):
 def create_paramfile(data_dir, image_width=640, image_height=768, daq_fs=192000, daq_n_ch=4, camera_fov_y=1.047198, #TODO in rad??? Logi C210 --> 60 deg
                      camera_height=2.0):
     pressure_calib = np.array([1, 1, 1, 1], dtype=float)
-    mic0pos = np.array([0.038, -0.034, 0.07], dtype=float)
+    mic0pos = np.array([0.015, -0.03, 0.07], dtype=float)
 
     speedOfSound = 343.0
 
@@ -94,7 +94,10 @@ def create_paramfile(data_dir, image_width=640, image_height=768, daq_fs=192000,
 
 if __name__ == '__main__':
     #generateMicPosFile([13, -35, 8])
-    checkMicPosFile('usvcam_main/test_data/micpos.h5')
+    #checkMicPosFile('usvcam_main/test_data/micpos.h5')
     # checkMicPosFile('usvcam_main/test_data/micpos_custom.h5')
-    checkMicPosFile(('data/micpos.h5'))
-    wav2dat("./data/2023-07-11-15-14-36")
+    #checkMicPosFile(('data/micpos.h5'))
+    #wav2dat("./data/2023-07-11-15-14-36")
+    create_paramfile("./data/2023-07-12-10-27-46",640,480,48000,4)
+
+
