@@ -30,7 +30,7 @@ D = scipy.io.loadmat(sys.prefix + '/etc/usvcam/D.mat', squeeze_me=True)
 D = D['D']
 D = np.array(D)
 
-z_range = [2.0, 4.0]
+z_range = [1.5, 4.0]#[2.0, 4.0]
 loc_thr = 2.3   # z value, around 99% in cum dist 
 min_peak_lev = 1.6  # z value, around 95% in cum dist
 

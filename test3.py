@@ -91,6 +91,8 @@ def my_pick_seg_for_calib(data_dir, n_pos_check=20):
 
 def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
 
+    n_ch = 4
+
     paramfile = data_dir + '/param.h5'
     with h5py.File(paramfile, mode='r') as f:    
         fs = f['/daq_param/fs'][()]
@@ -135,21 +137,28 @@ def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
             e = get_error(Xi, P, SEG, data_dir, mic0pos, speedOfSound)
             print('iter:{0:4d}, f(x) = '.format(Nfeval) + str(-e))
             Nfeval += 1
-            p = np.reshape(Xi, (3,3))
+            p = np.reshape(Xi, (n_ch-1,3))
             p = np.vstack([np.array([0,0,0]), p])
             #print(p + mic0pos)
 
         # run optimization
         if calibfile is None:
-            dx0 = np.tile([0,0,0], (3,1))
-            #dx0 = np.array([[-0.015,0.015,0],[0.0,0.03,0],[0.015,0.015,0]])
+            #dx0 = np.tile([0,0,0], (n_ch-1,1))
+            # initial mic position relative to mic ch14 (mic0pos)
+            dx0 = [[42.0 * 1, 0.0, 0.0],  # Mic 12
+                    [0.0, 42.0 * 1, 0.0],  # Mic 3
+                    [42.0 * 1, 42.0 * 1, 0.0]]
+            dx0 = np.array(dx0)/1000
         else:
             with h5py.File(calibfile, mode='r') as f:
                 dx0 = f['/result/micpos'][()]
             dx0 = dx0[1:,:] - dx0[0,:]
 
-        lb = np.tile([-0.06, -0.06, -0.01], (3,1))
-        ub = np.tile([0.06, 0.06, 0.01], (3,1))
+        # lower and upper bound of search
+        #lb = dx0 - 0.005
+        #ub = dx0 + 0.005
+        lb = np.tile([-0.06, -0.06, -0.01], (n_ch-1,1))
+        ub = np.tile([0.06, 0.06, 0.01], (n_ch-1,1))
 
         dx0 = dx0.flatten()
         lb = lb.flatten()
@@ -161,7 +170,7 @@ def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
         R = scipy.optimize.minimize(get_error, x0=dx0, args=(P, SEG, data_dir, mic0pos, speedOfSound), method='L-BFGS-B', bounds=b, callback=callbackF, options={'maxiter':50})
 
         dx_pred = R.x
-        dx_pred = np.reshape(dx_pred, (3,3))
+        dx_pred = np.reshape(dx_pred, (n_ch-1,3))
         dx_pred = np.vstack([np.array([0,0,0]), dx_pred])
         micpos = dx_pred + mic0pos
         print('estimated micpos:')
@@ -192,7 +201,7 @@ with open('calibdata.pickle','rb') as f:
 SEG = data["SEG"]
 P = data["P"]
 
-#my_calc_micpos(data_dir, SEG, P, h5f_outpath='./micpos.h5')
+my_calc_micpos(data_dir, SEG, P, h5f_outpath='./micpos.h5')
 
 analysis.create_localization_video(data_dir, './micpos.h5', color_eq=False)
 
