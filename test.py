@@ -43,49 +43,32 @@ import usvcam.analysis
 # wav2dat(data_dir)
 # usvcam.analysis.dat2wav(data_dir, 3)
 
+import clr
+import System.Reflection
+import sys
 
-import cv2
+# Add the Python.NET library to the system path
+sys.path.append(r"C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python37_64\Lib\site-packages")
 
-import harvester
+# Import the necessary classes and modules from the .NET Framework and the ICImagingControl namespace
+from System.Reflection import Assembly
+from TIS.Imaging.ICImagingControl import ImagingControl, DeviceEnumeration
 
-# Create a new Harvester instance
-harvester_instance = harvester.Harvester()
+def discover_cameras():
+    # Load the ICImagingControl.dll file
+    ic_dll = Assembly.LoadFrom(r"C:\Program Files\The Imaging Source Europe GmbH\IC Imaging Control 3.5\ClassLib\ICImagingControl.dll")
 
-# Use the Harvester instance to scrape a website
-data = harvester_instance.scrape('http://example.com')
+    # Enumerate all available devices
+    devices = DeviceEnumeration.EnumerateDevices()
 
-# Print the scraped data
-print(data)
-# Create a new Harvester object
-harvester = Harvester()
+    # Print information about each discovered camera
+    print(f"Found {len(devices)} camera(s):")
+    for i, device in enumerate(devices):
+        print(f"Camera {i+1}:")
+        print(f"\tDevice Name: {device.DeviceName}")
+        print(f"\tSerial Number: {device.SerialNumber}")
+        print(f"\tDisplay Name: {device.DisplayName}")
+        print(f"\tDevice Path: {device.DevicePath}")
 
-# Set the camera's IP address and other parameters
-ip_address = "192.168.0.100"
-packet_size = 1500
-timeout = 1000
-
-# Connect to the camera
-harvester.add_cti_file("C:/Program Files/JAI/SDK/bin/x64/JaiGigE_V_1_2.cti")
-camera = harvester.create_image_acquirer(ip_address, packet_size, timeout)
-
-# Start image acquisition
-camera.start_acquisition()
-
-# Acquire and display images
-while True:
-    # Retrieve the next image from the camera
-    image = camera.get_image()
-
-    # Convert the image to a numpy array
-    frame = cv2.cvtColor(image.as_opencv_image(), cv2.COLOR_BGR2RGB)
-
-    # Display the image
-    cv2.imshow("Camera", frame)
-
-    # Wait for a key press to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Stop image acquisition and release resources
-camera.stop_acquisition()
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    discover_cameras()
