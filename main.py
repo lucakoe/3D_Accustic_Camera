@@ -24,8 +24,8 @@ syncfile_filename = 'sync.csv'
 output_filename = 'video_audio.mp4'
 parameter_filename = 'param.h5'
 calib_path = './data/micpos.h5'
-
-mic_array_position = [13, -35, 8]  # relative to camera
+mic_array_amount = 2  # number of microphones
+mic_array_position = [[13, -35, 8], [0, 0, 0]]  # relative to camera
 
 # Audio settings
 num_channels = 16
@@ -39,7 +39,7 @@ fps = 25
 cam_delay = 0.0
 
 
-def record_audio(stream, audio_frames, num_audio_frames):
+def record_audio(streams, audio_frames, num_audio_frames):
     global current_audio_frame, sample_rate, start_time
     start_time = time.time()
     for i in range(num_audio_frames):
@@ -50,8 +50,10 @@ def record_audio(stream, audio_frames, num_audio_frames):
         while (time.time() - start_time) < expected_audio_time:
             time.sleep(0.001)
 
-        # Capture audio frame
-        data = stream.read(chunk)
+        # Capture audio frames from each stream
+        data = []
+        for stream in streams:
+            data.append(stream.read(chunk))
         audio_frames.append(data)
         current_audio_frame += 1
 
@@ -81,12 +83,16 @@ def record(output_path):
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
 
-    # Open a new audio stream for recording
-    stream = audio.open(format=pyaudio.paInt16,
-                        channels=num_channels,
-                        rate=sample_rate,
-                        input=True,
-                        frames_per_buffer=chunk)
+    # Open audio streams for recording from each microphone
+    streams = []
+    for i in range(mic_array_amount):
+        stream = audio.open(format=pyaudio.paInt16,
+                            channels=num_channels,
+                            rate=sample_rate,
+                            input=True,
+                            input_device_index=i,  # use the correct microphone device index here
+                            frames_per_buffer=chunk)
+        streams.append(stream)
 
     # Initialize video recording
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -106,7 +112,7 @@ def record(output_path):
         # Start recording audio in a separate thread
         audio_frames = []
         num_audio_frames = int(duration * sample_rate / chunk)
-        audio_thread = threading.Thread(target=record_audio, args=(stream, audio_frames, num_audio_frames))
+        audio_thread = threading.Thread(target=record_audio, args=(streams, audio_frames, num_audio_frames))
         audio_thread.start()
 
         # Start recording video in a separate thread
@@ -121,20 +127,26 @@ def record(output_path):
         video_thread.join()
 
         # Stop recording and close the audio and video streams
-        stream.stop_stream()
-        stream.close()
+        for stream in streams:
+            stream.stop_stream()
+            stream.close()
         audio.terminate()
         video_out.release()
         cap.release()
         cv2.destroyAllWindows()
 
-        # Save the recorded audio to a WAV file
-        wave_file = wave.open(audio_recording_out_path, "wb")
-        wave_file.setnchannels(num_channels)
-        wave_file.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
-        wave_file.setframerate(sample_rate)
-        wave_file.writeframes(b"".join(audio_frames))
-        wave_file.close()
+        #Continued from previous message:
+
+        # Save the recorded audio to WAV files for each microphone
+        for i in range(mic_array_amount):
+            audio_recording_out_path_i = f"{audio_recording_out_path[:-4]}_{i}.wav"
+            wave_file = wave.open(audio_recording_out_path_i, "wb")
+            wave_file.setnchannels(num_channels)
+            wave_file.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
+            wave_file.setframerate(sample_rate)
+            audio_frames_i = [frame[i] for frame in audio_frames]  # extract audio frames from the i-th microphone
+            wave_file.writeframes(b"".join(audio_frames_i))
+            wave_file.close()
 
         # Check the length of the audio and video data arrays
         print("Length of audio data:", len(audio_frames))
@@ -184,30 +196,28 @@ if __name__ == '__main__':
     data_dir = os.path.join("data", timestamp)
     os.makedirs(data_dir)
     record(data_dir)
-    cut_wav_channels(os.path.join(data_dir, audio_recording_out_filename), [3 - 1, 5 - 1, 12 - 1, 14 - 1],
-                     os.path.join(data_dir, 'cut_' + audio_recording_out_filename))
-
-    # arrange from left top to right bottom
-    rearrange_wav_channels(os.path.join(data_dir, 'cut_' + audio_recording_out_filename), [3, 2, 0, 1],
-                           os.path.join(data_dir,
-                                        'cut_' + audio_recording_out_filename))
-
-    avsync.combine_vid_and_audio(os.path.join(data_dir, 'cut_' + audio_recording_out_filename),
-                                 os.path.join(data_dir, video_recording_out_filename),
-                                 os.path.join(data_dir, syncfile_filename),
-                                 os.path.join(data_dir, output_filename), fps, sample_rate, cam_delay)
-
-    # TODO temporary
-    # data_dir = os.path.join("data", "2023-07-11-16-40-28")
-    calibration.wav2dat(data_dir)
-
-    # analisis part
-    calibration.create_paramfile(data_dir, width, height, sample_rate, 4)
-    analysis.dat2wav(data_dir, 3)
-    # USV segmentation
-    input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
-    calibration.generateMicPosFile(mic_array_position)
-
-
-    analysis.create_localization_video(data_dir, calib_path, color_eq=False)
-
+    # cut_wav_channels(os.path.join(data_dir, audio_recording_out_filename), [3 - 1, 5 - 1, 12 - 1, 14 - 1],
+    #                  os.path.join(data_dir, 'cut_' + audio_recording_out_filename))
+    #
+    # # arrange from left top to right bottom
+    # rearrange_wav_channels(os.path.join(data_dir, 'cut_' + audio_recording_out_filename), [3, 2, 0, 1],
+    #                        os.path.join(data_dir,
+    #                                     'cut_' + audio_recording_out_filename))
+    #
+    # avsync.combine_vid_and_audio(os.path.join(data_dir, 'cut_' + audio_recording_out_filename),
+    #                              os.path.join(data_dir, video_recording_out_filename),
+    #                              os.path.join(data_dir, syncfile_filename),
+    #                              os.path.join(data_dir, output_filename), fps, sample_rate, cam_delay)
+    #
+    # # TODO temporary
+    # # data_dir = os.path.join("data", "2023-07-11-16-40-28")
+    # calibration.wav2dat(data_dir)
+    #
+    # # analisis part
+    # calibration.create_paramfile(data_dir, width, height, sample_rate, 4)
+    # analysis.dat2wav(data_dir, 3)
+    # # USV segmentation
+    # input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
+    # calibration.generateMicPosFile(mic_array_position[0])
+    #
+    # analysis.create_localization_video(data_dir, calib_path, color_eq=False)
