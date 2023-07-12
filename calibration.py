@@ -27,10 +27,16 @@ def generateCalibrationTone():
 
 def generateMicPosFile(mic_array_position, mic_array_arrangement=[
     [0.0, 0.0, 0.0],  # Mic 14
-    [42.0 * 1, 0.0, 0.0],  # Mic 12
-    [0.0, 42.0 * 1, 0.0],  # Mic 3
-    [42.0 * 1, 42.0 * 1, 0.0]]  # Mic 5
+    [0.042 * 1, 0.0, 0.0],  # Mic 12
+    [0.0, 0.042 * 1, 0.0],  # Mic 3
+    [0.042 * 1, 0.042 * 1, 0.0]]  # Mic 5
                        ):
+    #generates arrangement matrix for 16 channels
+    mic_array_arrangement = []
+    for x in range(4):
+        for y in range(4):
+            mic_array_arrangement.append([x*0.042,y*0.042])
+
     # Create datasets
     result = np.add(np.array(mic_array_arrangement), np.array(mic_array_position))
 

@@ -25,6 +25,8 @@ parameter_filename = 'param.h5'
 calib_path = './data/micpos.h5'
 mic_array_amount = 2  # number of microphones
 mic_array_position = [[13, -35, 8], [0, 0, 0]]  # relative to camera
+mic_array_layout = [8, 9, 6, 7, 10, 11, 4, 5, 12, 13, 2, 3, 14, 15, 0,
+                    1]  # mic channels arranged from left top to right bottom
 
 # Audio settings
 num_channels = 16
@@ -150,7 +152,6 @@ def record(output_path):
             stream.close()
         audio.terminate()
 
-
         # Release video capture and writer
         cap.release()
         video_out.release()
@@ -178,6 +179,7 @@ def record(output_path):
         csv_file.close()
 
         print("Recording saved\n")
+
 
 def cut_wav_channels(input_file, channels_to_keep, output_file):
     with wave.open(input_file, 'rb') as wav:
@@ -218,11 +220,8 @@ if __name__ == '__main__':
     data_dir = os.path.join("data", timestamp)
     os.makedirs(data_dir)
     record(data_dir)
-    cut_wav_channels(os.path.join(data_dir, audio_recording_out_filename), [3 - 1, 5 - 1, 12 - 1, 14 - 1],
-                     os.path.join(data_dir, 'cut_' + audio_recording_out_filename))
 
-    # arrange from left top to right bottom
-    rearrange_wav_channels(os.path.join(data_dir, 'cut_' + audio_recording_out_filename), [3, 2, 0, 1],
+    rearrange_wav_channels(os.path.join(data_dir, 'cut_' + audio_recording_out_filename), mic_array_layout,
                            os.path.join(data_dir,
                                         'cut_' + audio_recording_out_filename))
 
@@ -236,10 +235,10 @@ if __name__ == '__main__':
     calibration.wav2dat(data_dir)
 
     # analisis part
-    calibration.create_paramfile(data_dir, width, height, sample_rate, 4)
-    analysis.dat2wav(data_dir, 3)
+    calibration.create_paramfile(data_dir, width, height, sample_rate, num_channels)
+    analysis.dat2wav(data_dir, num_channels-1)
     # USV segmentation
     input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
-    calibration.generateMicPosFile(mic_array_position[0])
+    #calibration.generateMicPosFile(mic_array_position[0])
 
     analysis.create_localization_video(data_dir, calib_path, color_eq=False)
