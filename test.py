@@ -1,17 +1,17 @@
-import cv2
-import numpy as np
-import pyaudio
-import wave
-import csv
-import time
-import threading
-import avsync
-import os
-import datetime
-import calibration
-import scipy.io.wavfile
-import usvcam.analysis
-
+# import cv2
+# import numpy as np
+# import pyaudio
+# import wave
+# import csv
+# import time
+# import threading
+# import avsync
+# import os
+# import datetime
+# import calibration
+# import scipy.io.wavfile
+# import usvcam.analysis
+import comtypes as comtypes
 # def cut_wav_channels(input_file, channels_to_keep, output_file):
 #     with wave.open(input_file, 'rb') as wav:
 #         channels = wav.getnchannels()
@@ -44,31 +44,28 @@ import usvcam.analysis
 # usvcam.analysis.dat2wav(data_dir, 3)
 
 import clr
-import System.Reflection
 import sys
+import System.Windows.Forms as WinForms
 
-# Add the Python.NET library to the system path
-sys.path.append(r"C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python37_64\Lib\site-packages")
+# Add the IC Imaging Control .NET Component directory to the Python module search path
+sys.path.append(r"C:\Users\experimenter\PycharmProjects\Accustic_Camera\misc\ICImaging Control3.5\redist\dotnet\x64")
 
-# Import the necessary classes and modules from the .NET Framework and the ICImagingControl namespace
-from System.Reflection import Assembly
-from TIS.Imaging.ICImagingControl import ImagingControl, DeviceEnumeration
+# Load the TIS.Imaging.ICImagingControl35.dll assembly
+clr.AddReference("TIS.Imaging.ICImagingControl35")
 
-def discover_cameras():
-    # Load the ICImagingControl.dll file
-    ic_dll = Assembly.LoadFrom(r"C:\Program Files\The Imaging Source Europe GmbH\IC Imaging Control 3.5\ClassLib\ICImagingControl.dll")
+# Import the ICImagingControl class from the TIS.Imaging.ICImagingControl namespace
+from TIS.Imaging import ICImagingControl
 
-    # Enumerate all available devices
-    devices = DeviceEnumeration.EnumerateDevices()
+# Create an instance of the ICImagingControl class
+ic = ICImagingControl()
 
-    # Print information about each discovered camera
-    print(f"Found {len(devices)} camera(s):")
-    for i, device in enumerate(devices):
-        print(f"Camera {i+1}:")
-        print(f"\tDevice Name: {device.DeviceName}")
-        print(f"\tSerial Number: {device.SerialNumber}")
-        print(f"\tDisplay Name: {device.DisplayName}")
-        print(f"\tDevice Path: {device.DevicePath}")
+# Get a list of available camera devices
+devices = ic.Devices
 
-if __name__ == "__main__":
-    discover_cameras()
+# Print the name and UID of each device
+if len(devices) == 0:
+    print("No camera devices found.")
+else:
+    print("Available camera devices:")
+    for device in devices:
+        print("  - Name: " + device.Name)
