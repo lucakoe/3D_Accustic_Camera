@@ -514,7 +514,7 @@ def calc_seg_stft(fp_dat, seg, fs, n_ch, pressure_calib):
     nfft = 192
     noverlap = 0
 
-    f, t, X = scipy.signal.stft(simg, fs=fs, window='hamming', nperseg=nfft, noverlap=noverlap, axis=1)
+    f, t, X = scipy.signal.stft(simg, fs=fs, window='hamming', nperseg=nfft, noverlap=noverlap, axis=0)
 
     return f, t, X
 
@@ -554,7 +554,7 @@ def calc_seg_power(fp_dat, seg, tau, fs, n_ch, pressure_calib, return_average=Tr
         else:
             S[i_segpoint * 2, :] = s
 
-        x = X[i_f + 1, i_t, :]
+        x = X[i_f + 1, :, i_t]
         if usegpu and tau.shape[0] > 100:
             s = calc_point_power_gpu(x, f[i_f + 1], tau, n_ch)
         else:

@@ -105,8 +105,8 @@ if __name__ == '__main__':
     #generateMicPosFile([13, -35, 8])
     #checkMicPosFile('usvcam_main/test_data/micpos.h5')
     # checkMicPosFile('usvcam_main/test_data/micpos_custom.h5')
-    #checkMicPosFile(('data/micpos.h5'))
+    checkMicPosFile(('./micpos.h5'))
     #wav2dat("./data/2023-07-11-15-14-36")
-    create_paramfile("./data/2023-07-12-10-27-46",640,480,48000,4)
+    #create_paramfile("./data/2023-07-12-10-27-46",640,480,48000,4)
 
 

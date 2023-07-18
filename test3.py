@@ -109,7 +109,7 @@ def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
 
         def get_error(dx, P, SEG, data_dir, mic0pos, speedOfSound):
 
-            dx = np.reshape(dx, (n_ch , 3))
+            dx = np.reshape(dx, (n_ch-1 , 3))
             dx = np.vstack([np.array([0, 0, 0]), dx])
             dx = dx + mic0pos
 
@@ -139,8 +139,8 @@ def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
             e = get_error(Xi, P, SEG, data_dir, mic0pos, speedOfSound)
             print('iter:{0:4d}, f(x) = '.format(Nfeval) + str(-e))
             Nfeval += 1
-            p = np.reshape(Xi, (n_ch - 2, 3))
-            p = np.vstack([np.array([0, 0, 0]), p])
+            #p = np.reshape(Xi, (n_ch - 1, 3))
+            #p = np.vstack([np.array([0, 0, 0]), p])
             # print(p + mic0pos)
 
         # run optimization
@@ -154,7 +154,8 @@ def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
                 for x in range(int(math.sqrt(n_ch))):
                     for y in range(int(math.sqrt(n_ch))):
                         dx0.append([x * 0.042, y * 0.042, 0])
-                dx0 =np.array(dx0)
+                dx0 = np.array(dx0)
+                dx0 = dx0[1:, :] - dx0[0, :]
                 print(dx0)
             else:
                 print("Provide calibfile")
@@ -167,10 +168,10 @@ def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
 
         # TODO change the
         # lower and upper bound of search
-        lb = dx0 - 0.005
-        ub = dx0 + 0.005
-        # lb = np.tile([-0.06, -0.06, -0.01], (n_ch - 2, 1))
-        # ub = np.tile([0.06, 0.06, 0.01], (n_ch - 2, 1))
+        #lb = dx0 - 0.005
+        #ub = dx0 + 0.005
+        lb = np.tile([-0.1, 0.0, -0.01], (n_ch - 1, 1))
+        ub = np.tile([0.1, 0.2, 0.01], (n_ch - 1, 1))
 
         dx0 = dx0.flatten()
         lb = lb.flatten()
@@ -202,11 +203,11 @@ def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
 
 data_dir = './data/2023-07-14-13-56-48'
 
-# SEG, P = my_pick_seg_for_calib(data_dir)
-#
-# data = {"SEG":SEG, "P":P}
+#SEG, P = my_pick_seg_for_calib(data_dir)
 
-# with open('calibdata.pickle','wb') as f:
+#data = {"SEG":SEG, "P":P}
+
+#with open('calibdata.pickle','wb') as f:
 #     pickle.dump(data, f)
 
 with open('calibdata.pickle', 'rb') as f:
@@ -215,7 +216,7 @@ with open('calibdata.pickle', 'rb') as f:
 SEG = data["SEG"]
 P = data["P"]
 
-my_calc_micpos(data_dir, SEG, P, h5f_outpath='./micpos.h5')
+#my_calc_micpos(data_dir, SEG, P, h5f_outpath='./micpos.h5')
 
 analysis.create_localization_video(data_dir, './micpos.h5', color_eq=False)
 
