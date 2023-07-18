@@ -507,38 +507,37 @@ def calc_seg_stft(fp_dat, seg, fs, n_ch, pressure_calib):
 
     spos = (int(t_intv[0]*fs)*2*n_ch).astype(np.int64)
     fp_dat.seek(spos, 0)
-    simg = np.fromfile(fp_dat, np.int16, int(n_ch*int((t_intv[1]-t_intv[0])*fs)) )
+    simg = np.fromfile(fp_dat, np.int16, int(n_ch*int((t_intv[1]-t_intv[0])*fs)))
     simg = simg.reshape([-1, n_ch])
     simg = simg / pressure_calib
 
     nfft = 192
     noverlap = 0
 
-    f, t, X = scipy.signal.stft(simg, fs=fs, window='hamming', nperseg=nfft, noverlap=noverlap, axis=0)
+    f, t, X = scipy.signal.stft(simg, fs=fs, window='hamming', nperseg=nfft, noverlap=noverlap, axis=1)
 
     return f, t, X
 
 def calc_seg_power(fp_dat, seg, tau, fs, n_ch, pressure_calib, return_average=True, stft_data=None):
-
     mrgn = 0.01
-    t_intv = [np.min(seg[:,0]) - mrgn, np.max(seg[:,0]) + mrgn]
+    t_intv = [np.min(seg[:, 0]) - mrgn, np.max(seg[:, 0]) + mrgn]
 
-    n_ch  = n_ch.astype(np.int64)
+    n_ch = n_ch.astype(np.int64)
 
     if stft_data is None:
         f, t, X = calc_seg_stft(fp_dat, seg, fs, n_ch, pressure_calib)
     else:
         f, t, X = stft_data
 
-    t = t+t_intv[0]
+    t = t + t_intv[0]
 
-    I_t = np.searchsorted(t, seg[:,0])
-    I_f = np.searchsorted(f, seg[:,1])-1
+    I_t = np.searchsorted(t, seg[:, 0])
+    I_f = np.searchsorted(f, seg[:, 1]) - 1
 
     if return_average:
         S = np.zeros(tau.shape[0])
     else:
-        S = np.zeros((seg.shape[0]*2, tau.shape[0]))
+        S = np.zeros((seg.shape[0] * 2, tau.shape[0]))
 
     for i_segpoint in range(seg.shape[0]):
         i_f = I_f[i_segpoint]
@@ -553,21 +552,21 @@ def calc_seg_power(fp_dat, seg, tau, fs, n_ch, pressure_calib, return_average=Tr
         if return_average:
             S = S + s
         else:
-            S[i_segpoint*2, :] = s
+            S[i_segpoint * 2, :] = s
 
-        x = X[i_f+1,:, i_t]
+        x = X[i_f + 1, i_t, :]
         if usegpu and tau.shape[0] > 100:
-            s = calc_point_power_gpu(x, f[i_f+1], tau, n_ch)
+            s = calc_point_power_gpu(x, f[i_f + 1], tau, n_ch)
         else:
-            s = calc_point_power(x, f[i_f+1], tau, n_ch)
+            s = calc_point_power(x, f[i_f + 1], tau, n_ch)
 
         if return_average:
             S = S + s
         else:
-            S[i_segpoint*2+1, :] = s
+            S[i_segpoint * 2 + 1, :] = s
 
     if return_average:
-        S = S/(seg.shape[0]*2)
+        S = S / (seg.shape[0] * 2)
 
     return S
 
@@ -799,7 +798,7 @@ def create_localization_video(data_dir, calibfile, t_end=-1, color_eq=False):
 def dat2wav(data_dir, i_ch):
 
     fpath_dat = data_dir + '/snd.dat'
-    fpath_wav = data_dir + '/' + os.path.splitext(os.path.basename(fpath_dat))[0] + '.ch{:d}.wav'.format(i_ch)
+    fpath_wav = data_dir + '/' + os.path.splitext(os.path.basename(fpath_dat))[0] + '.ch{:d}.wav'.format(i_ch-1)
     paramfile = data_dir + '/param.h5'
     with h5py.File(paramfile, mode='r') as f:    
         fs = f['/daq_param/fs'][()]
@@ -821,8 +820,8 @@ def dat2wav(data_dir, i_ch):
                 a = np.fromfile(f, np.int16, 4*readsize)
                 if len(a) == 0:
                     break
-                x = a.reshape([-1, 4])
-                xx = x[:,i_ch]
+                x = a.reshape([-1, i_ch])
+                xx = x[:,i_ch-1]
                 xxx = np.zeros(xx.shape[0], np.int16)
                 xxx[:] = xx
                 f_out.writeframes(xxx)

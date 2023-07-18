@@ -53,7 +53,7 @@ def checkMicPosFile(path):
 
 
 def wav2dat(data_dir):
-    A = scipy.io.wavfile.read(data_dir + '/cut_audio.wav')
+    A = scipy.io.wavfile.read(data_dir + '/audio.wav')
     max_int16 = 32767
     max_int32 = 2147483647
     X = A[1]
@@ -64,8 +64,11 @@ def wav2dat(data_dir):
 
 def create_paramfile(data_dir, image_width=640, image_height=768, daq_fs=192000, daq_n_ch=4, camera_fov_y=1.047198, #TODO in rad??? Logi C210 --> 60 deg
                      camera_height=2.0):
-    pressure_calib = np.array([1, 1, 1, 1], dtype=float)
-    mic0pos = np.array([0.015, -0.03, 0.07], dtype=float)
+    pressure_calib_array=[]
+    for channels in range(daq_n_ch):
+        pressure_calib_array.append(1)
+    pressure_calib = np.array(pressure_calib_array, dtype=float)
+    mic0pos = np.array([-0.063, 0.032, 0.005], dtype=float)
 
     speedOfSound = 343.0
 

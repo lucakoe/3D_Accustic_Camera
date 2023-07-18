@@ -24,7 +24,7 @@ output_filename = 'video_audio.mp4'
 parameter_filename = 'param.h5'
 calib_path = './data/micpos.h5'
 mic_array_amount = 2  # number of microphones
-mic_array_position = [[13, -35, 8], [0, 0, 0]]  # relative to camera
+mic_array_position = [[-0.063, 0.032, 0.005], [0, 0, 0]]  # relative to camera
 mic_array_layout = [8, 9, 6, 7, 10, 11, 4, 5, 12, 13, 2, 3, 14, 15, 0,
                     1]  # mic channels arranged from left top to right bottom
 
@@ -212,31 +212,32 @@ def rearrange_wav_channels(input_file, channel_order, output_file):
 
 
 if __name__ == '__main__':
-    # Get the current date and time
-    now = datetime.datetime.now()
-    timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
-
-    # Create a new directory for this recording
-    data_dir = os.path.join("data", timestamp)
-    os.makedirs(data_dir)
-    record(data_dir)
-
-    rearrange_wav_channels(os.path.join(data_dir, 'cut_' + audio_recording_out_filename), mic_array_layout,
-                           os.path.join(data_dir,
-                                        'cut_' + audio_recording_out_filename))
-
-    avsync.combine_vid_and_audio(os.path.join(data_dir, 'cut_' + audio_recording_out_filename),
-                                 os.path.join(data_dir, video_recording_out_filename),
-                                 os.path.join(data_dir, syncfile_filename),
-                                 os.path.join(data_dir, output_filename), fps, sample_rate, cam_delay)
+    # # Get the current date and time
+    # now = datetime.datetime.now()
+    # timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
+    #
+    # # Create a new directory for this recording
+    # data_dir = os.path.join("data", timestamp)
+    # os.makedirs(data_dir)
+    # record(data_dir)
+    #
+    # rearrange_wav_channels(os.path.join(data_dir, audio_recording_out_filename), mic_array_layout,
+    #                        os.path.join(data_dir,
+    #                                      audio_recording_out_filename))
+    #
+    # avsync.combine_vid_and_audio(os.path.join(data_dir,  audio_recording_out_filename),
+    #                              os.path.join(data_dir, video_recording_out_filename),
+    #                              os.path.join(data_dir, syncfile_filename),
+    #                              os.path.join(data_dir, output_filename), fps, sample_rate, cam_delay)
 
     # TODO temporary
-    # data_dir = os.path.join("data", "2023-07-11-16-40-28")
+    data_dir = os.path.join("data", "2023-07-14-13-56-48")
     calibration.wav2dat(data_dir)
 
-    # analisis part
+    # analysis part
     calibration.create_paramfile(data_dir, width, height, sample_rate, num_channels)
-    analysis.dat2wav(data_dir, num_channels-1)
+
+    analysis.dat2wav(data_dir, num_channels)
     # USV segmentation
     input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
     #calibration.generateMicPosFile(mic_array_position[0])
