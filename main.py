@@ -27,6 +27,7 @@ mic_array_amount = 2  # number of microphones
 mic_array_position = [[-0.063, 0.032, 0.005], [0, 0, 0]]  # relative to camera
 mic_array_layout = [8, 9, 6, 7, 10, 11, 4, 5, 12, 13, 2, 3, 14, 15, 0,
                     1]  # mic channels arranged from left top to right bottom
+new_calibration= False # if set true, a new calibration for the calib_path gets initiated
 
 # Audio settings
 num_channels = 16
@@ -236,10 +237,23 @@ if __name__ == '__main__':
 
     # analysis part
     calibration.create_paramfile(data_dir, width, height, sample_rate, num_channels)
-
     analysis.dat2wav(data_dir, num_channels)
     # USV segmentation
     input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
-    #calibration.generateMicPosFile(mic_array_position[0])
+
+    if new_calibration:
+        SEG, P = calibration.my_pick_seg_for_calib(data_dir)
+
+        data = {"SEG": SEG, "P": P}
+
+        # with open('calibdata.pickle','wb') as f:
+        #      pickle.dump(data, f)
+        #
+        # with open('calibdata.pickle', 'rb') as f:
+        #     data = pickle.load(f)
+
+        SEG = data["SEG"]
+        P = data["P"]
+        calibration.my_calc_micpos(data_dir, SEG, P, h5f_outpath='./micpos.h5')
 
     analysis.create_localization_video(data_dir, calib_path, color_eq=False)
