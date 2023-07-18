@@ -26,7 +26,6 @@ from TIS.Imaging import *
 import cv2
 import subprocess
 
-
 import clr
 import cv2
 import os
@@ -36,6 +35,7 @@ from System import *
 from System.Drawing import *
 from System.Windows.Forms import *
 from TIS.Imaging import *
+
 
 def StartRecording():
     # Create an instance of the ImagingControl class
@@ -95,6 +95,7 @@ def StartRecording():
     # Close OpenCV windows
     cv2.destroyAllWindows()
 
+
 # Function to convert Bitmap to NumPy array
 def bitmap_to_numpy(bitmap):
     # Get the pixel format and dimensions of the bitmap
@@ -119,6 +120,7 @@ def bitmap_to_numpy(bitmap):
     bitmap.UnlockBits(bitmap_data)
 
     return array
+
 
 # Start the recording
 StartRecording()

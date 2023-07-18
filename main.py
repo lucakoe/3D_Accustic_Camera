@@ -27,7 +27,7 @@ mic_array_amount = 2  # number of microphones
 mic_array_position = [[-0.063, 0.032, 0.005], [0, 0, 0]]  # relative to camera
 mic_array_layout = [8, 9, 6, 7, 10, 11, 4, 5, 12, 13, 2, 3, 14, 15, 0,
                     1]  # mic channels arranged from left top to right bottom
-new_calibration= False # if set true, a new calibration for the calib_path gets initiated
+new_calibration = False  # if set true, a new calibration for the calib_path gets initiated
 
 # Audio settings
 num_channels = 16
