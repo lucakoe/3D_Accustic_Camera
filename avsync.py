@@ -6,7 +6,7 @@ import os
 
 def combine_vid_and_audio(wavfile, vidfile, syncfile, outvidfile, vid_fps=30, audio_fs=44100, cam_delay=0.0):
 
-    tmp_vidfile = './data/tmp.mp4'
+    tmp_vidfile = './data/temp/tmp.mp4'
 
     T = np.genfromtxt(syncfile, delimiter=',', skip_header=1)
 

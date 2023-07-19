@@ -1,3 +1,5 @@
+import shutil
+
 import cv2
 import numpy as np
 import pyaudio
@@ -9,11 +11,13 @@ import avsync
 import os
 import datetime
 import usvcam_main.usvcam.analysis as analysis
-
 import calibration
+import nidaqmx
+from nidaqmx.constants import LineGrouping
 
 # Global variable for current audio frame
 current_audio_frame_numbers = []
+current_video_frame=0
 audio_frames = []
 start_time = 0
 
@@ -24,6 +28,7 @@ syncfile_filename = 'sync.csv'
 output_filename = 'video_audio.mp4'
 parameter_filename = 'param.h5'
 calib_path = './data/micpos.h5'
+temp_path = './data/temp'
 mic_array_amount = 2  # number of microphones
 mic_array_position = [[-0.063, 0.032, 0.005], [0, 0, 0]]  # relative to camera
 mic_array_layout = [[8, 9, 6, 7, 10, 11, 4, 5, 12, 13, 2, 3, 14, 15, 0,
@@ -37,9 +42,10 @@ sample_rate = 48000  # careful use the same as the audio device in the system se
 chunk = 1024
 
 # Video settings
+trigger_device="Dev1/port1/line0"
 width = 640
 height = 480
-fps = 25
+fps = 30
 cam_delay = 0.0
 
 
@@ -61,40 +67,48 @@ def record_audio(stream, mic_i, stop_event):
         current_audio_frame_numbers[mic_i] += 1
 
 
-def record_video(cap, video_out, frames, csv_writer, stop_event):
-    global current_audio_frame_numbers, sample_rate, width, height, fps
+def record_video_trigger(csv_writer, stop_event):
+    global current_audio_frame_numbers,current_video_frame, sample_rate, fps
     while not stop_event.is_set():
-        # Capture video frame
-        ret, frame = cap.read()
-        if not ret or stop_event.is_set():
+        # Calculate the expected timestamp of the current video frame
+        expected_audio_time = current_video_frame/fps
+
+        # Wait until the expected timestamp is reached
+        while (time.time() - start_time) < expected_audio_time and not stop_event.is_set():
+            time.sleep(0.001)
+
+        if stop_event.is_set():
             break
 
-        frame = cv2.resize(frame, (width, height))
-        video_out.write(frame)
-        frames.append(frame)
         new_row = [time.time() - start_time]
         for current_audio_frame_number in current_audio_frame_numbers:
             new_row.append(current_audio_frame_number * chunk)
 
+        with nidaqmx.Task() as task:
+            task.do_channels.add_do_chan(
+                trigger_device, line_grouping=LineGrouping.CHAN_FOR_ALL_LINES
+            )
+
+            try:
+                task.write([True])
+                time.sleep(1/(fps*2))
+                task.write([False])
+            except nidaqmx.DaqError as e:
+                print("Trigger Device Error:\n")
+                print(e)
+
+
+
         # Save the timestamps to the CSV file
         csv_writer.writerow(new_row)
-
-        # Display live preview
-        cv2.imshow('Preview', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):  # press 'q' to exit preview
-            break
-
-    cv2.destroyAllWindows()
-
+        current_video_frame += 1
 
 def record(output_path):
-    print("Press Enter to start recording")
-    input()
+    input("Press Enter to start recording. Don't forget to start the video recording")
 
     print("Start recording\n")
     # Set the paths for the output files
     audio_recording_out_path = os.path.join(data_dir, audio_recording_out_filename)
-    video_recording_out_path = os.path.join(data_dir, video_recording_out_filename)
     syncfile_path = os.path.join(data_dir, syncfile_filename)
 
     # Initialize PyAudio
@@ -113,16 +127,6 @@ def record(output_path):
         current_audio_frame_numbers.append(0)
         audio_frames.append([])
 
-    # Initialize video recording
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_out = cv2.VideoWriter(video_recording_out_path, fourcc, fps, (width, height))
-
-    # Initialize video capture
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW, )
-    cap.set(cv2.CAP_PROP_FPS, fps)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-
     # Initialize CSV writer
     with open(syncfile_path, mode='w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -140,7 +144,7 @@ def record(output_path):
         # Start recording video in a separate thread
         frames = []
         record_event = threading.Event()
-        video_thread = threading.Thread(target=record_video, args=(cap, video_out, frames, csv_writer, record_event))
+        video_thread = threading.Thread(target=record_video_trigger, args=(csv_writer, record_event))
         video_thread.start()
 
         # Wait for the user to stop recording
@@ -159,9 +163,7 @@ def record(output_path):
             stream.close()
         audio.terminate()
 
-        # Release video capture and writer
-        cap.release()
-        video_out.release()
+
 
         # Save the recorded audio to WAV files for each microphone
         for i in range(mic_array_amount):
@@ -174,8 +176,7 @@ def record(output_path):
             wave_file.setnchannels(num_channels)
             wave_file.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
             wave_file.setframerate(sample_rate)
-            audio_frames_i = [frame[i] for frame in audio_frames]  # extract audio frames from the i-th microphone
-            wave_file.writeframes(b"".join(audio_frames_i))
+            wave_file.writeframes(b"".join(audio_frames[i]))
             wave_file.close()
 
         # Check the length of the audio and video data arrays
@@ -238,6 +239,15 @@ if __name__ == '__main__':
 
         rearrange_wav_channels(audio_recording_out_path_i, mic_array_layout[i],
                                audio_recording_out_path_i)
+
+    # USV segmentation
+    input("Stop Video Recording and press enter. File gets read from temp folder")
+    while(not os.path.exists(os.path.join(temp_path,video_recording_out_filename))):
+        input("No video file found in temp folder, please move it there and check if the name is correct")
+    if os.path.exists(os.path.join(temp_path,video_recording_out_filename)):
+        shutil.move(os.path.join(temp_path,video_recording_out_filename), os.path.join(data_dir,video_recording_out_filename))
+    else:
+        print("File not found. Cannot move the file.")
 
     avsync.combine_vid_and_audio(os.path.join(data_dir, audio_recording_out_filename),
                                  os.path.join(data_dir, video_recording_out_filename),
