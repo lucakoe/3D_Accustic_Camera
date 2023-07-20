@@ -3,7 +3,7 @@ import time
 import nidaqmx
 from nidaqmx.constants import LineGrouping
 
-fps=20
+fps=25
 current_video_frame=0
 running=True
 

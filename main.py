@@ -1,6 +1,5 @@
 # TODO make documetation of recording setup
 # camera calibration
-# 2 mic arrays
 # camera focus
 # (restructure program)
 
@@ -13,21 +12,6 @@ import usvcam_main.usvcam.analysis as analysis
 import calibration
 import pyaudio
 
-# General settings
-audio_recording_out_filename = 'audio.wav'
-video_recording_out_filename = 'vid.mp4'
-syncfile_filename = 'sync.csv'
-output_filename = 'video_audio.mp4'
-parameter_filename = 'param.h5'
-calib_path = './data/micpos.h5'
-temp_path = './data/temp'
-mic_array_devices = [1, 2]  # number of microphones
-mic_array_position = [[-0.063, 0.032, 0.005], [0, 0, 0]]  # relative to camera
-mic_array_layout = [[8, 9, 6, 7, 10, 11, 4, 5, 12, 13, 2, 3, 14, 15, 0,
-                     1], [8, 9, 6, 7, 10, 11, 4, 5, 12, 13, 2, 3, 14, 15, 0,
-                          1]]  # mic channels arranged from left top to right bottom
-new_calibration = False  # if set true, a new calibration for the calib_path gets initiated
-
 # Audio settings
 num_channels = 16
 sample_rate = 44100  # careful use the same as the audio device in the system settings
@@ -39,6 +23,25 @@ width = 640
 height = 480
 fps = 20
 cam_delay = 0.0
+
+# General settings
+audio_recording_out_filename = 'audio.wav'
+video_recording_out_filename = 'vid.mp4'
+syncfile_filename = 'sync.csv'
+output_filename = 'video_audio.mp4'
+parameter_filename = 'param.h5'
+calib_path = './data/micpos.h5'
+temp_path = './data/temp'
+mic_array_devices = [2, 1]  # device number of microphones in order of output files
+mic_array_position = [[-0.063, 0.032, 0.005], [0, 0, 0]]  # relative to camera
+mic_array_layout_default = [[], [], [], [], [11, 4, 13, 2], [], [], [], [], [], [], [], [], [], [], [], [],
+                            [8, 9, 6, 7, 10, 11, 4, 5, 12, 13, 2, 3, 14, 15, 0,
+                             1]]  # layout of used channels depending on number of channels used
+mic_array_layout = [mic_array_layout_default[num_channels],
+                    mic_array_layout_default[
+                        num_channels]]  # mic channels arranged from left top to right bottom (when looking from behind)
+new_calibration = False  # if set true, a new calibration for the calib_path gets initiated
+
 
 def record_and_analyze():
     # Get the current date and time
@@ -57,7 +60,7 @@ def record_and_analyze():
         if i == 0:
             audio_recording_out_path.append(os.path.join(data_dir, audio_recording_out_filename))
         else:
-            audio_recording_out_path.append( f"{os.path.join(data_dir, audio_recording_out_filename)[:-4]}_{i}.wav")
+            audio_recording_out_path.append(f"{os.path.join(data_dir, audio_recording_out_filename)[:-4]}_{i}.wav")
 
         recording.rearrange_wav_channels(audio_recording_out_path[i], mic_array_layout[i],
                                          audio_recording_out_path[i])
@@ -105,9 +108,6 @@ def record_and_analyze():
     # analysis.create_localization_video(data_dir, calib_path, color_eq=False)
 
 
-
-
-
 if __name__ == "__main__":
-    #recording.get_microphone_info()
+    # recording.get_microphone_info()
     record_and_analyze()

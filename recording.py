@@ -61,7 +61,7 @@ def record(data_dir, audio_recording_out_filename, syncfile_filename, trigger_de
            num_channels, sample_rate,
            chunk_size):
 
-    get_trigger_info()
+    get_trigger_info(trigger_device)
     get_microphone_info(mic_array_devices)
 
     input("Press Enter to start recording. Don't forget to start the video recording")
@@ -195,11 +195,11 @@ def get_microphone_info(array_of_mics=None):
     p.terminate()
 
 
-def get_trigger_info():
+def get_trigger_info(trigger_device):
     try:
         with nidaqmx.Task() as task:
             task.do_channels.add_do_chan(
-                "Dev1/port1/line0", line_grouping=LineGrouping.CHAN_FOR_ALL_LINES
+                trigger_device, line_grouping=LineGrouping.CHAN_FOR_ALL_LINES
             )
 
             task.write([False])
