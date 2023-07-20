@@ -1,3 +1,10 @@
+# TODO make documetation of recording setup
+# camera calibration
+# 2 mic arrays
+# camera focus
+# (restructure program)
+
+
 import shutil
 
 import cv2
@@ -17,7 +24,7 @@ from nidaqmx.constants import LineGrouping
 
 # Global variable for current audio frame
 current_audio_frame_numbers = []
-current_video_frame=0
+current_video_frame = 0
 audio_frames = []
 start_time = 0
 
@@ -42,66 +49,52 @@ sample_rate = 48000  # careful use the same as the audio device in the system se
 chunk = 1024
 
 # Video settings
-trigger_device="Dev1/port1/line0"
+trigger_device = "Dev1/port1/line0"
 width = 640
 height = 480
-fps = 30
+fps = 20
 cam_delay = 0.0
 
 
 def record_audio(stream, mic_i, stop_event):
-    global audio_frames,current_audio_frame_numbers, sample_rate, start_time
+    global audio_frames, current_audio_frame_numbers, sample_rate, start_time
     while not stop_event.is_set():
-        # Calculate the expected timestamp of the current audio frame
-        expected_audio_time = current_audio_frame_numbers[mic_i] * (chunk / sample_rate)
-
-        # Wait until the expected timestamp is reached
-        while (time.time() - start_time) < expected_audio_time and not stop_event.is_set():
-            time.sleep(0.001)
-
-        if stop_event.is_set():
-            break
-
         # Capture audio frames from each stream
         audio_frames[mic_i].append(stream.read(chunk))
         current_audio_frame_numbers[mic_i] += 1
 
 
 def record_video_trigger(csv_writer, stop_event):
-    global current_audio_frame_numbers,current_video_frame, sample_rate, fps
-    while not stop_event.is_set():
-        # Calculate the expected timestamp of the current video frame
-        expected_audio_time = current_video_frame/fps
+    global current_audio_frame_numbers, current_video_frame, sample_rate, fps, start_time
+    start_time = time.time()
+    with nidaqmx.Task() as task:
+        task.do_channels.add_do_chan(
+            trigger_device, line_grouping=LineGrouping.CHAN_FOR_ALL_LINES
+        )
 
-        # Wait until the expected timestamp is reached
-        while (time.time() - start_time) < expected_audio_time and not stop_event.is_set():
-            time.sleep(0.001)
+        while not stop_event.is_set():
+            # Calculate the expected timestamp of the current video frame
+            expected_audio_time = current_video_frame / fps
 
-        if stop_event.is_set():
-            break
+            # Wait until the expected timestamp is reached
+            while (time.time() - start_time) < expected_audio_time and not stop_event.is_set():
+                time.sleep(0.001)
 
-        new_row = [time.time() - start_time]
-        for current_audio_frame_number in current_audio_frame_numbers:
-            new_row.append(current_audio_frame_number * chunk)
+            if stop_event.is_set():
+                break
 
-        with nidaqmx.Task() as task:
-            task.do_channels.add_do_chan(
-                trigger_device, line_grouping=LineGrouping.CHAN_FOR_ALL_LINES
-            )
+            new_row = [time.time() - start_time]
+            for current_audio_frame_number in current_audio_frame_numbers:
+                new_row.append(current_audio_frame_number * chunk)
 
-            try:
-                task.write([True])
-                time.sleep(1/(fps*2))
-                task.write([False])
-            except nidaqmx.DaqError as e:
-                print("Trigger Device Error:\n")
-                print(e)
+            task.write([True])
+            task.write([False])
+            print("poff", time.time() - start_time)
 
+            # Save the timestamps to the CSV file
+            csv_writer.writerow(new_row)
+            current_video_frame += 1
 
-
-        # Save the timestamps to the CSV file
-        csv_writer.writerow(new_row)
-        current_video_frame += 1
 
 def record(output_path):
     input("Press Enter to start recording. Don't forget to start the video recording")
@@ -138,11 +131,10 @@ def record(output_path):
         audio_threads = []
         for i in range(mic_array_amount):
             audio_threads.append(threading.Thread(target=record_audio, args=(
-            streams[i], i, stop_event)))
+                streams[i], i, stop_event)))
             audio_threads[i].start()
 
         # Start recording video in a separate thread
-        frames = []
         record_event = threading.Event()
         video_thread = threading.Thread(target=record_video_trigger, args=(csv_writer, record_event))
         video_thread.start()
@@ -163,8 +155,6 @@ def record(output_path):
             stream.close()
         audio.terminate()
 
-
-
         # Save the recorded audio to WAV files for each microphone
         for i in range(mic_array_amount):
             if i == 0:
@@ -182,7 +172,7 @@ def record(output_path):
         # Check the length of the audio and video data arrays
         for audio_frame in audio_frames:
             print("Length of audio data:", len(audio_frame))
-        print("Length of video data:", len(frames))
+        print("Length of video data:", current_video_frame)
 
         # Close the CSV file
         csv_file.close()
@@ -242,10 +232,11 @@ if __name__ == '__main__':
 
     # USV segmentation
     input("Stop Video Recording and press enter. File gets read from temp folder")
-    while(not os.path.exists(os.path.join(temp_path,video_recording_out_filename))):
+    while (not os.path.exists(os.path.join(temp_path, video_recording_out_filename))):
         input("No video file found in temp folder, please move it there and check if the name is correct")
-    if os.path.exists(os.path.join(temp_path,video_recording_out_filename)):
-        shutil.move(os.path.join(temp_path,video_recording_out_filename), os.path.join(data_dir,video_recording_out_filename))
+    if os.path.exists(os.path.join(temp_path, video_recording_out_filename)):
+        shutil.move(os.path.join(temp_path, video_recording_out_filename),
+                    os.path.join(data_dir, video_recording_out_filename))
     else:
         print("File not found. Cannot move the file.")
 
@@ -256,27 +247,27 @@ if __name__ == '__main__':
 
     # # TODO temporary
     # data_dir = os.path.join("data", "2023-07-14-13-56-48")
-    # calibration.wav2dat(data_dir)
-    #
-    # # analysis part
-    # calibration.create_paramfile(data_dir, width, height, sample_rate, num_channels)
-    # analysis.dat2wav(data_dir, num_channels)
-    # # USV segmentation
-    # input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
-    #
-    # if new_calibration:
-    #     SEG, P = calibration.my_pick_seg_for_calib(data_dir)
-    #
-    #     data = {"SEG": SEG, "P": P}
-    #
-    #     # with open('calibdata.pickle','wb') as f:
-    #     #      pickle.dump(data, f)
-    #     #
-    #     # with open('calibdata.pickle', 'rb') as f:
-    #     #     data = pickle.load(f)
-    #
-    #     SEG = data["SEG"]
-    #     P = data["P"]
-    #     calibration.my_calc_micpos(data_dir, SEG, P, h5f_outpath='./micpos.h5')
-    #
-    # analysis.create_localization_video(data_dir, calib_path, color_eq=False)
+    calibration.wav2dat(data_dir)
+
+    # analysis part
+    calibration.create_paramfile(data_dir, width, height, sample_rate, num_channels)
+    analysis.dat2wav(data_dir, num_channels)
+    # USV segmentation
+    input(data_dir + "\n" + "Do USV segmentation and press Enter to continue...")
+
+    if new_calibration:
+        SEG, P = calibration.my_pick_seg_for_calib(data_dir)
+
+        data = {"SEG": SEG, "P": P}
+
+        # with open('calibdata.pickle','wb') as f:
+        #      pickle.dump(data, f)
+        #
+        # with open('calibdata.pickle', 'rb') as f:
+        #     data = pickle.load(f)
+
+        SEG = data["SEG"]
+        P = data["P"]
+        calibration.my_calc_micpos(data_dir, SEG, P, h5f_outpath='./micpos.h5')
+
+    analysis.create_localization_video(data_dir, calib_path, color_eq=False)
