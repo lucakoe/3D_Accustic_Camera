@@ -56,9 +56,14 @@ def record_video_trigger(trigger_device, fps, csv_writer, stop_event, chunk_size
             current_video_frame += 1
 
 
-def record(data_dir, audio_recording_out_filename, syncfile_filename, trigger_device, fps, mic_array_amount,
+
+def record(data_dir, audio_recording_out_filename, syncfile_filename, trigger_device, fps, mic_array_devices,
            num_channels, sample_rate,
            chunk_size):
+
+    get_trigger_info()
+    get_microphone_info(mic_array_devices)
+
     input("Press Enter to start recording. Don't forget to start the video recording")
 
     print("Start recording\n")
@@ -71,12 +76,12 @@ def record(data_dir, audio_recording_out_filename, syncfile_filename, trigger_de
 
     # Open audio streams for recording from each microphone
     streams = []
-    for i in range(mic_array_amount):
+    for mic_array_device in mic_array_devices:
         stream = audio.open(format=pyaudio.paInt16,
                             channels=num_channels,
                             rate=sample_rate,
                             input=True,
-                            input_device_index=i,  # use the correct microphone device index here
+                            input_device_index=mic_array_device,  # use the correct microphone device index here
                             frames_per_buffer=chunk_size)
         streams.append(stream)
         current_audio_frame_numbers.append(0)
@@ -91,7 +96,7 @@ def record(data_dir, audio_recording_out_filename, syncfile_filename, trigger_de
 
         stop_event = threading.Event()
         audio_threads = []
-        for i in range(mic_array_amount):
+        for i in range(len(mic_array_devices)):
             audio_threads.append(threading.Thread(target=record_audio, args=(
                 streams[i], i, chunk_size, stop_event)))
             audio_threads[i].start()
@@ -119,7 +124,7 @@ def record(data_dir, audio_recording_out_filename, syncfile_filename, trigger_de
         audio.terminate()
 
         # Save the recorded audio to WAV files for each microphone
-        for i in range(mic_array_amount):
+        for i in range(len(mic_array_devices)):
             if i == 0:
                 audio_recording_out_path_i = audio_recording_out_path
             else:
@@ -171,3 +176,34 @@ def rearrange_wav_channels(input_file, channel_order, output_file):
             new_wav.setframerate(sample_rate)
             new_wav.writeframes(wav_data.tobytes())
     return output_file
+
+def get_microphone_info(array_of_mics=None):
+    p = pyaudio.PyAudio()
+    if array_of_mics is None:
+        num_devices = p.get_device_count()
+        print(f"Number of Audio Devices (Microphones): {num_devices}\n")
+        array_of_mics=range(num_devices)
+
+    for mic_device in array_of_mics:
+
+        device_info = p.get_device_info_by_index(mic_device)
+        print(f"Device Index: {mic_device}")
+        print(f"    Name: {device_info['name']}")
+        print(f"    Max Input Channels: {device_info['maxInputChannels']}")
+        print(f"    Default Sample Rate: {device_info['defaultSampleRate']} Hz")
+
+    p.terminate()
+
+
+def get_trigger_info():
+    try:
+        with nidaqmx.Task() as task:
+            task.do_channels.add_do_chan(
+                "Dev1/port1/line0", line_grouping=LineGrouping.CHAN_FOR_ALL_LINES
+            )
+
+            task.write([False])
+
+    except nidaqmx.DaqError as e:
+        print(e)
+    print("Trigger Device: " + trigger_device)
