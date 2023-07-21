@@ -19,5 +19,5 @@ The cameras in turn are connected via LAN to the PC for the Recording.
 
 ## Software
 Entry point of  the software is the main.py file. This software records audio and keeps track of the timing of trigger activation in relation to audio recording for later synchronization. It only records audio, so video has to be recorded separately and can be done on a second system, if computation resources are problematic.
-The video file can then be moved to the in the main configured temp file with the according video file name to be combined and syncronized with the audio. It can then be processed further with the modified USVCAM software also accessed in the main. The USVSeg software is used for the segmentation.
+The video file can then be moved to the in the main configured temp file with the according video file name to be combined and syncronized with the audio. It can then be processed further with the modified USVCAM software also accessed in the main. The USVSeg software is used for the segmentation. A camera calibration file has to be made for the specific setup in advance.
 

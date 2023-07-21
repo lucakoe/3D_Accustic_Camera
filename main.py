@@ -1,7 +1,6 @@
 # TODO make documetation of recording setup
 # camera calibration
-# camera focus
-# (restructure program)
+
 
 import shutil
 import avsync
@@ -31,7 +30,8 @@ video_recording_out_filename = 'vid.mp4'
 syncfile_filename = 'sync.csv'
 output_filename = 'video_audio.mp4'
 parameter_filename = 'param.h5'
-calib_path = os.path.join(data_path, 'micpos.h5')
+camera_calibration_path = os.path.join(data_path, 'cam_calibration.h5')
+mic_calibration_path = os.path.join(data_path, 'micpos.h5')
 temp_path = os.path.join(data_path, 'temp')
 mic_array_devices = [2, 1]  # device number of microphones in order of output files
 mic_array_position = [[-0.063, 0.032, 0.005], [0, 0, 0]]  # relative to camera
@@ -88,7 +88,7 @@ def record_audio_trigger(data_path):
 # makes analysis based on the default names. only processes first file without _i extention.
 def analysis_default(recording_dir):
     calibration.wav2dat(recording_dir)
-    calibration.create_paramfile(recording_dir, width, height, sample_rate, num_channels)
+    calibration.create_paramfile(recording_dir, camera_calibration_path, width, height, sample_rate, num_channels, mic_array_position[0])
     analysis.dat2wav(recording_dir, num_channels)
     # USV segmentation
     input(recording_dir + "\n" + "Do USV segmentation and press Enter to continue...")
@@ -108,10 +108,10 @@ def analysis_default(recording_dir):
         P = data["P"]
         calibration.my_calc_micpos(recording_dir, SEG, P, h5f_outpath='./micpos.h5')
 
-    analysis.create_localization_video(recording_dir, calib_path, color_eq=False)
+    analysis.create_localization_video(recording_dir, mic_calibration_path, color_eq=False)
 
 
 if __name__ == "__main__":
     # recording.get_microphone_info()
     recording_dir = record_audio_trigger(data_path)
-    #analysis_default(recording_dir)
+    # analysis_default(recording_dir)

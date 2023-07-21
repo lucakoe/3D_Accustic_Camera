@@ -72,26 +72,35 @@ def wav2dat(data_dir):
         f.write(X.tobytes())
 
 
-def create_paramfile(data_dir, image_width=640, image_height=768, daq_fs=192000, daq_n_ch=4, camera_fov_y=1.047198,
-                     camera_height=2.0):
+# TODO make calibration for wide lense 2-3 times
+#    test accuracy
+def create_paramfile(data_dir, camera_calibration_file=None, image_width=640, image_height=768, daq_fs=192000,
+                     daq_n_ch=4,
+                     camera_height=2.0, mic0pos=[0, 0, 0]):
     pressure_calib_array = []
+    speedOfSound = 343.0
+    camera_matrix = None
+    coeff = np.array([0, 0, 0, 0, 0], dtype=float)
+    if camera_calibration_file is not None:
+        with h5py.File(camera_calibration_file, mode='r') as f:
+            print(f.keys())
+            camera_matrix = f['/mtx'][()]
+            coeff = f['/dist'][()]
+    else:
+        camera_fov_y = 1.047198
+        fy = image_height / (2 * np.tan(camera_fov_y / 2))
+        fx = fy
+        ppx = image_width / 2
+        ppy = image_height / 2
+        camera_matrix = [[fx, 0., ppx][0., fy, ppy][0., 0., 1.]]
+
+    fx, fy, ppx, ppy = camera_matrix[0][0], camera_matrix[1][1], camera_matrix[0][2], camera_matrix[1][2]
     for channels in range(daq_n_ch):
         pressure_calib_array.append(1)
     pressure_calib = np.array(pressure_calib_array, dtype=float)
-    mic0pos = np.array([-0.063, 0.032, 0.005], dtype=float)
-
-    speedOfSound = 343.0
-
-    fy = image_height / (2 * np.tan(camera_fov_y / 2))
-
-    fx = fy
-
-    ppx = image_width / 2
-    ppy = image_height / 2
-
+    mic0pos = np.array(mic0pos, dtype=float)
     r = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1], dtype=float)
     t = np.array([0, 0, 0], dtype=float)
-    coeff = np.array([0, 0, 0, 0, 0], dtype=float)
 
     with h5py.File(data_dir + '/param.h5', mode='w') as f:
         f.create_dataset('/camera_param/camera_height', data=camera_height)
