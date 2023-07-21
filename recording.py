@@ -57,7 +57,7 @@ def record_video_trigger(trigger_device, fps, csv_writer, stop_event, chunk_size
 
 
 
-def record(data_dir, audio_recording_out_filename, syncfile_filename, trigger_device, fps, mic_array_devices,
+def record(recording_dir, audio_recording_out_filename, syncfile_filename, trigger_device, fps, mic_array_devices,
            num_channels, sample_rate,
            chunk_size):
 
@@ -68,8 +68,8 @@ def record(data_dir, audio_recording_out_filename, syncfile_filename, trigger_de
 
     print("Start recording\n")
     # Set the paths for the output files
-    audio_recording_out_path = os.path.join(data_dir, audio_recording_out_filename)
-    syncfile_path = os.path.join(data_dir, syncfile_filename)
+    audio_recording_out_path = os.path.join(recording_dir, audio_recording_out_filename)
+    syncfile_path = os.path.join(recording_dir, syncfile_filename)
 
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
@@ -171,7 +171,7 @@ def rearrange_wav_channels(input_file, channel_order, output_file):
         wav_data = np.reshape(wav_data, (-1, channels))
         wav_data = wav_data[:, channel_order]
         with wave.open(output_file, 'wb') as new_wav:
-            new_wav.setnchannels(wav_data.shape[1])
+            new_wav.setnchannels(channels)
             new_wav.setsampwidth(wav.getsampwidth())
             new_wav.setframerate(sample_rate)
             new_wav.writeframes(wav_data.tobytes())
