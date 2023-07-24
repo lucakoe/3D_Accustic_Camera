@@ -34,6 +34,7 @@ camera_calibration_path = os.path.join(data_path, 'cam_calibration.h5')
 mic_calibration_path = os.path.join(data_path, 'micpos.h5')
 temp_path = os.path.join(data_path, 'temp')
 mic_array_devices = [2, 1]  # device number of microphones in order of output files
+camera_devices = [0, 1]  # number doesnt matter, just length; implemented for possible extension
 mic_array_position = [[-0.063, 0.032, 0.005], [0, 0, 0]]  # relative to camera
 mic_array_layout_default = [[], [], [], [], [11, 4, 13, 2], [], [], [], [], [], [], [], [], [], [], [], [],
                             [8, 9, 6, 7, 10, 11, 4, 5, 12, 13, 2, 3, 14, 15, 0,
@@ -67,20 +68,48 @@ def record_audio_trigger(data_path):
         recording.rearrange_wav_channels(audio_recording_out_path[i], mic_array_layout[i],
                                          audio_recording_out_path[i])
 
+    video_recording_out_path = []
+    for i in range(len(camera_devices)):
+        if i == 0:
+            video_recording_out_path.append(os.path.join(recording_dir, video_recording_out_filename))
+        else:
+            video_recording_out_path.append(f"{os.path.join(recording_dir, video_recording_out_filename)[:-4]}_{i}.mp4")
+
     # USV segmentation
     input("Stop Video Recording and press enter. File gets read from temp folder")
-    while (not os.path.exists(os.path.join(temp_path, video_recording_out_filename))):
-        input("No video file found in temp folder, please move it there and check if the name is correct")
-    if os.path.exists(os.path.join(temp_path, video_recording_out_filename)):
-        shutil.move(os.path.join(temp_path, video_recording_out_filename),
-                    os.path.join(recording_dir, video_recording_out_filename))
-    else:
-        print("File not found. Cannot move the file.")
 
-    avsync.combine_vid_and_audio(os.path.join(recording_dir, audio_recording_out_filename),
-                                 os.path.join(recording_dir, video_recording_out_filename),
-                                 os.path.join(recording_dir, syncfile_filename),
-                                 os.path.join(recording_dir, output_filename), fps, sample_rate, cam_delay)
+    video_recording_out_path = []
+    video_recording_temp_path = []
+    for i in range(len(camera_devices)):
+        if i == 0:
+            video_recording_out_path.append(os.path.join(recording_dir, video_recording_out_filename))
+            video_recording_temp_path.append(os.path.join(temp_path, video_recording_out_filename))
+        else:
+            video_recording_out_path.append(f"{os.path.join(recording_dir, video_recording_out_filename)[:-4]}_{i}.mp4")
+            video_recording_temp_path.append(f"{os.path.join(temp_path, video_recording_out_filename)[:-4]}_{i}.mp4")
+
+        while (not os.path.exists(video_recording_temp_path[i])):
+            input(f"No video file {i} found in temp folder, please move it there and check if the name is correct")
+
+        if os.path.exists(video_recording_temp_path[i]):
+            shutil.move(video_recording_temp_path[i], video_recording_out_path[i])
+        else:
+            print(f"File {i} not found. Cannot move the file.")
+
+    output_path = []
+    for i in range(min(len(camera_devices),len(mic_array_devices))):
+        if i == 0:
+            output_path.append(os.path.join(recording_dir, output_filename))
+        else:
+            output_path.append(f"{os.path.join(recording_dir, output_filename)[:-4]}_{i}.mp4")
+
+        avsync.combine_vid_and_audio(audio_recording_out_path[i],
+                                     video_recording_out_path[i],
+                                     #TODO fix but that only outputs one frame on second file
+                                     os.path.join(recording_dir, syncfile_filename),
+                                     output_path[i],i, fps, sample_rate, cam_delay)
+
+
 
     return recording_dir
 
@@ -88,7 +117,8 @@ def record_audio_trigger(data_path):
 # makes analysis based on the default names. only processes first file without _i extention.
 def analysis_default(recording_dir):
     calibration.wav2dat(recording_dir)
-    calibration.create_paramfile(recording_dir, camera_calibration_path, width, height, sample_rate, num_channels, mic_array_position[0])
+    calibration.create_paramfile(recording_dir, camera_calibration_path, width, height, sample_rate, num_channels,
+                                 mic_array_position[0])
     analysis.dat2wav(recording_dir, num_channels)
     # USV segmentation
     input(recording_dir + "\n" + "Do USV segmentation and press Enter to continue...")

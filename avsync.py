@@ -4,14 +4,14 @@ from tqdm import tqdm
 import os
 
 
-def combine_vid_and_audio(wavfile, vidfile, syncfile, outvidfile, vid_fps=30, audio_fs=44100, cam_delay=0.0):
+def combine_vid_and_audio(wavfile, vidfile, syncfile, outvidfile, audio_index=0, vid_fps=30, audio_fs=44100, cam_delay=0.0):
 
     tmp_vidfile = './data/temp/tmp.mp4'
 
     T = np.genfromtxt(syncfile, delimiter=',', skip_header=1)
 
-    T[:,1] = T[:,1]/audio_fs
-    t = np.arange(0, T[-10,1], 1/vid_fps)
+    T[:,1+audio_index] = T[:,1+audio_index]/audio_fs
+    t = np.arange(0, T[-10,1+audio_index], 1/vid_fps)
     n_frame = t.shape[0]
 
     vr = cv2.VideoCapture(vidfile)
