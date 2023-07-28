@@ -1499,7 +1499,6 @@ def get_tau(data_dir, calibfile, speedOfSound, points=None, d=5, micpos=None, vi
     mtx = np.array(mtx)
     dist = coeff[np.newaxis, :]
     p = np.array([U, V]).T
-    # TODO show matsumoto
     p_undist = cv2.undistortPoints(p, mtx, dist[    0, 0])
     p_undist = p_undist[:, 0, :]
     U = p_undist[:, 0]
