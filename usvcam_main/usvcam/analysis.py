@@ -62,9 +62,29 @@ def create_assignment_video(data_dir, n_mice, color_eq=False):
     tool.create_assignment_video(data_dir, n_mice, color_eq=color_eq)
 
 
-def create_localization_video(data_dir, calibfile, t_end=-1, color_eq=False):
-    tool.create_localization_video(data_dir, calibfile, t_end=t_end, color_eq=color_eq)
+def create_localization_video(data_dir, calibfile, t_end=-1, paramfile_path=None, syncfile_path=None,
+                              videofile_path=None,
+                              audio_data_dat_path=None, outfile_path=None, color_eq=False):
+    if paramfile_path is None:
+        paramfile_path = data_dir + '/param.h5'
+    if syncfile_path is None:
+        syncfile_path = data_dir + '/sync.csv'
+    if audio_data_dat_path is None:
+        audio_data_dat_path = data_dir + '/snd.dat'
+    if videofile_path is None:
+        videofile_path = data_dir + '/vid.mp4'
+    if outfile_path is None:
+        outfile_path = data_dir + './vid.loc.mp4'
+
+    tool.create_localization_video(data_dir, calibfile, paramfile_path=paramfile_path, syncfile_path=syncfile_path,
+                                   videofile_path=videofile_path,
+                                   audio_data_dat_path=audio_data_dat_path, outfile_path=outfile_path, t_end=t_end,
+                                   color_eq=color_eq)
 
 
-def dat2wav(data_dir, i_ch):
-    tool.dat2wav(data_dir, i_ch)
+def dat2wav(data_dir, i_ch, paramfile_path=None, audio_data_dat_path=None):
+    if paramfile_path is None:
+        paramfile_path = data_dir + '/param.h5'
+    if audio_data_dat_path is None:
+        audio_data_dat_path = data_dir + '/snd.dat'
+    tool.dat2wav(data_dir, i_ch, paramfile_path=paramfile_path, audio_data_dat_path=audio_data_dat_path)

@@ -56,20 +56,17 @@ def record_video_trigger(trigger_device, fps, csv_writer, stop_event, chunk_size
             current_video_frame += 1
 
 
-
 def record(recording_dir, audio_recording_out_filename, syncfile_filename, trigger_device, fps, mic_array_devices,
            num_channels, sample_rate,
-           chunk_size):
-
+           chunk_size, recording_dir_i_name="mic"):
     get_trigger_info(trigger_device)
     get_microphone_info(mic_array_devices)
-
+    recording_dir_i = []
     input("Press Enter to start recording. Don't forget to start the video recording")
-
+    for i in range(len(mic_array_devices)):
+        recording_dir_i.append(os.path.join(recording_dir, recording_dir_i_name + str(i)))
+        os.makedirs(recording_dir_i[i])
     print("Start recording\n")
-    # Set the paths for the output files
-    audio_recording_out_path = os.path.join(recording_dir, audio_recording_out_filename)
-    syncfile_path = os.path.join(recording_dir, syncfile_filename)
 
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
@@ -86,10 +83,14 @@ def record(recording_dir, audio_recording_out_filename, syncfile_filename, trigg
         streams.append(stream)
         current_audio_frame_numbers.append(0)
         audio_frames.append([])
+    # Split the file name into name and extension parts
+    name, extension = os.path.abspath(syncfile_filename).split('.')
+    # Create the modified file name with the provided number
+    syncfile_combined_path = os.path.join(recording_dir, f"{name}_combined.{extension}")
 
     # Initialize CSV writer
-    with open(syncfile_path, mode='w', newline='') as csv_file:
-        csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    with open(syncfile_combined_path, mode='w+', newline='') as sync_combined_file:
+        csv_writer = csv.writer(sync_combined_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         # csv_writer.writerow(['Time (s)', 'Video Frame Number', 'Audio Frame Number', 'Audio Position in file'])
 
         # Start recording audio in a separate thread
@@ -123,27 +124,49 @@ def record(recording_dir, audio_recording_out_filename, syncfile_filename, trigg
             stream.close()
         audio.terminate()
 
+        # Close the CSV file
+        sync_combined_file.close()
+
         # Save the recorded audio to WAV files for each microphone
         for i in range(len(mic_array_devices)):
-            if i == 0:
-                audio_recording_out_path_i = audio_recording_out_path
-            else:
-                audio_recording_out_path_i = f"{audio_recording_out_path[:-4]}_{i}.wav"
-
-            wave_file = wave.open(audio_recording_out_path_i, "wb")
+            wave_file = wave.open(os.path.join(recording_dir_i[i], audio_recording_out_filename), "wb")
             wave_file.setnchannels(num_channels)
             wave_file.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
             wave_file.setframerate(sample_rate)
             wave_file.writeframes(b"".join(audio_frames[i]))
             wave_file.close()
+            with open(os.path.join(recording_dir_i[i],syncfile_filename), mode='w', newline='') as sync_i_csv_file,  open(syncfile_combined_path, mode='r', newline='') as sync_combined_file:
+
+
+                sync_i_csv_writer = csv.writer(sync_i_csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+                sync_combined_cvs_reader = csv.reader(sync_combined_file, delimiter=',', quotechar='"',
+                                                      quoting=csv.QUOTE_MINIMAL)
+                # Read the first row to get the headers (field names)
+                header_row = next(sync_combined_cvs_reader)
+                field_count = len(header_row)
+
+                # Check if the specified column numbers are within bounds
+                if not (1 <= field_count) or not (1 <= 2 + i <= field_count):
+                    raise ValueError(
+                        "Invalid column numbers. Column numbers should be between 1 and the number of columns in the CSV.")
+
+                # Write the selected columns to the output file
+                for row in sync_combined_cvs_reader:
+                    selected_row = [row[1 - 1], row[2 + i - 1]]
+                    sync_i_csv_writer.writerow(selected_row)
+
+                # Close the CSV file
+                sync_i_csv_file.close()
+                sync_combined_file.close()
+
 
         # Check the length of the audio and video data arrays
         for audio_frame in audio_frames:
             print("Length of audio data:", len(audio_frame))
         print("Length of video data:", current_video_frame)
 
-        # Close the CSV file
-        csv_file.close()
+
 
         print("Recording saved\n")
 
@@ -177,15 +200,15 @@ def rearrange_wav_channels(input_file, channel_order, output_file):
             new_wav.writeframes(wav_data.tobytes())
     return output_file
 
+
 def get_microphone_info(array_of_mics=None):
     p = pyaudio.PyAudio()
     if array_of_mics is None:
         num_devices = p.get_device_count()
         print(f"Number of Audio Devices (Microphones): {num_devices}\n")
-        array_of_mics=range(num_devices)
+        array_of_mics = range(num_devices)
 
     for mic_device in array_of_mics:
-
         device_info = p.get_device_info_by_index(mic_device)
         print(f"Device Index: {mic_device}")
         print(f"    Name: {device_info['name']}")

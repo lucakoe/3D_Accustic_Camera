@@ -605,14 +605,21 @@ def calc_point_power(x, f, tau, n_ch):
     return s
 
 
-def calc_sspec_all_frame(data_dir, calibfile, fpath_out, t_end=-1):
+def calc_sspec_all_frame(data_dir, calibfile, fpath_out, t_end=-1, paramfile_path=None, syncfile_path=None,
+                         audio_data_dat_path=None):
     # with open(config_path, 'r') as f:
     #    usvcam_cfg = yaml.safe_load(f)
     # speedOfSound = float(usvcam_cfg['speed_of_sound'])
     # pressure_calib = np.array(usvcam_cfg['sound_pressure_calibration'])
 
-    paramfile = data_dir + '/param.h5'
-    with h5py.File(paramfile, mode='r') as f:
+    if paramfile_path is None:
+        paramfile_path = data_dir + '/param.h5'
+    if syncfile_path is None:
+        syncfile_path = data_dir + '/sync.csv'
+    if audio_data_dat_path is None:
+        audio_data_dat_path = data_dir + '/snd.dat'
+
+    with h5py.File(paramfile_path, mode='r') as f:
         fs = f['/daq_param/fs'][()]
         n_ch = f['/daq_param/n_ch'][()]
         im_w = f['/camera_param/color_intrin/width'][()]
@@ -626,7 +633,7 @@ def calc_sspec_all_frame(data_dir, calibfile, fpath_out, t_end=-1):
 
     vid_size = [im_w, im_h]
 
-    T = np.genfromtxt(data_dir + '/sync.csv', delimiter=',')
+    T = np.genfromtxt(syncfile_path, delimiter=',')
 
     if t_end > 0:
         I = T[:, 1] / fs < t_end
@@ -635,10 +642,8 @@ def calc_sspec_all_frame(data_dir, calibfile, fpath_out, t_end=-1):
     n_frame = T.shape[0]
     wsize = fs / 10
 
-    fpath_dat = data_dir + '/snd.dat'
-
     with h5py.File(fpath_out, mode='w') as fp_out:
-        with open(fpath_dat, 'rb') as fp_dat:
+        with open(audio_data_dat_path, 'rb') as fp_dat:
             for i_frame in tqdm(range(n_frame)):
 
                 t_intv = np.array([T[i_frame, 1] - wsize / 2, T[i_frame, 1] + wsize / 2]) / fs
@@ -767,7 +772,20 @@ def create_assignment_video(data_dir, n_mice, color_eq=False):
     print('done')
 
 
-def create_localization_video(data_dir, calibfile, t_end=-1, color_eq=False):
+def create_localization_video(data_dir, calibfile, t_end=-1, color_eq=False, paramfile_path=None, syncfile_path=None,
+                              videofile_path=None,
+                              audio_data_dat_path=None, outfile_path=None):
+    if paramfile_path is None:
+        paramfile_path = data_dir + '/param.h5'
+    if syncfile_path is None:
+        syncfile_path = data_dir + '/sync.csv'
+    if audio_data_dat_path is None:
+        audio_data_dat_path = data_dir + '/snd.dat'
+    if videofile_path is None:
+        videofile_path = data_dir + '/vid.mp4'
+    if outfile_path is None:
+        outfile_path = data_dir + './vid.loc.mp4'
+
     audiblewavfile = glob.glob(data_dir + '/*.audible.wav')
     audiblewavfile = audiblewavfile[0]
 
@@ -782,10 +800,13 @@ def create_localization_video(data_dir, calibfile, t_end=-1, color_eq=False):
         return
 
     print('calculating spatial spectrum in each frame...')
-    calc_sspec_all_frame(data_dir, calibfile, tmpsspecfile, t_end=t_end)
+    calc_sspec_all_frame(data_dir, calibfile, tmpsspecfile, paramfile_path=paramfile_path, syncfile_path=syncfile_path,
+                         audio_data_dat_path=audio_data_dat_path, t_end=t_end)
 
     print('overlay spatial spectrum on video...')
-    draw_spect_on_all_vidframe(tmpvidfile, data_dir, tmpsspecfile, t_end=t_end, color_eq=color_eq)
+    draw_spect_on_all_vidframe(tmpvidfile, data_dir, tmpsspecfile, paramfile_path=paramfile_path,
+                               syncfile_path=syncfile_path, videofile_path=videofile_path, t_end=t_end,
+                               color_eq=color_eq)
 
     print('combining sound and video...')
     if t_end > 0:
@@ -794,27 +815,31 @@ def create_localization_video(data_dir, calibfile, t_end=-1, color_eq=False):
     else:
         tmpwavfile = audiblewavfile
 
-    outfile = data_dir + './vid.loc.mp4'
-    os.system('ffmpeg -y -i "' + tmpvidfile + '" -i "' + tmpwavfile + '" -c:v copy -c:a aac "' + outfile + '"')
+
+    os.system('ffmpeg -y -i "' + tmpvidfile + '" -i "' + tmpwavfile + '" -c:v copy -c:a aac "' + outfile_path + '"')
 
     print('done')
 
 
-def dat2wav(data_dir, i_ch):
-    fpath_dat = data_dir + '/snd.dat'
-    fpath_wav = data_dir + '/' + os.path.splitext(os.path.basename(fpath_dat))[0] + '.ch{:d}.wav'.format(i_ch - 1)
-    paramfile = data_dir + '/param.h5'
-    with h5py.File(paramfile, mode='r') as f:
+def dat2wav(data_dir, i_ch, paramfile_path=None, audio_data_dat_path=None):
+
+    if paramfile_path is None:
+        paramfile_path = data_dir + '/param.h5'
+    if audio_data_dat_path is None:
+        audio_data_dat_path = data_dir + '/snd.dat'
+
+    fpath_wav = data_dir + '/' + os.path.splitext(os.path.basename(audio_data_dat_path))[0] + '.ch{:d}.wav'.format(i_ch - 1)
+    with h5py.File(paramfile_path, mode='r') as f:
         fs = f['/daq_param/fs'][()]
         n_ch = f['/daq_param/n_ch'][()]
 
-    fsize = os.path.getsize(fpath_dat)
+    fsize = os.path.getsize(audio_data_dat_path)
 
     sw = 2
     readsize = fs
 
     cnt = 0
-    with open(fpath_dat, 'r') as f:
+    with open(audio_data_dat_path, 'r') as f:
         with wave.open(fpath_wav, 'wb') as f_out:
             f_out.setnchannels(1)
             f_out.setsampwidth(sw)
@@ -960,7 +985,7 @@ def draw_assign_on_all_vidframe(fpath_out, data_dir, n_mice, conf_thr=0.99, colo
     vr = cv2.VideoCapture(vid_file)
     fmt = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
     vw = cv2.VideoWriter(fpath_out, fmt, v_fs, (
-    int(vr.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vr.get(cv2.CAP_PROP_FRAME_HEIGHT) + spect_height * 2)), isColor=True)
+        int(vr.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vr.get(cv2.CAP_PROP_FRAME_HEIGHT) + spect_height * 2)), isColor=True)
 
     seg = np.genfromtxt(data_dir + '/assign.csv', delimiter=',')
 
@@ -1073,7 +1098,15 @@ def draw_assign_on_all_vidframe(fpath_out, data_dir, n_mice, conf_thr=0.99, colo
     vr.release()
 
 
-def draw_spect_on_all_vidframe(fpath_out, data_dir, sspecfile, t_end=-1, color_eq=False):
+def draw_spect_on_all_vidframe(fpath_out, data_dir, sspecfile, t_end=-1, syncfile_path=None, videofile_path=None,
+                               paramfile_path=None, color_eq=False):
+    if syncfile_path is None:
+        syncfile_path = data_dir + '/sync.csv'
+    if videofile_path is None:
+        videofile_path = data_dir + '/vid.mp4'
+    if paramfile_path is None:
+        paramfile_path = data_dir + '/param.h5'
+
     v_fs = 30
 
     spect_height = 100
@@ -1083,11 +1116,9 @@ def draw_spect_on_all_vidframe(fpath_out, data_dir, sspecfile, t_end=-1, color_e
 
     ch_monitor = usvcam_cfg['ch_monitor']
 
-    T = np.genfromtxt(data_dir + '/sync.csv', delimiter=',')
+    T = np.genfromtxt(syncfile_path, delimiter=',')
 
-    vid_file = data_dir + '/vid.mp4'
-    paramfile = data_dir + '/param.h5'
-    with h5py.File(paramfile, mode='r') as f:
+    with h5py.File(paramfile_path, mode='r') as f:
         fs = f['/daq_param/fs'][()]
         n_ch = f['/daq_param/n_ch'][()]
         n_ch = n_ch.astype(np.int64)
@@ -1102,7 +1133,7 @@ def draw_spect_on_all_vidframe(fpath_out, data_dir, sspecfile, t_end=-1, color_e
     t = np.arange(0, T[-10, 1], 1 / v_fs)
     n_frame = t.shape[0]
 
-    vr = cv2.VideoCapture(vid_file)
+    vr = cv2.VideoCapture(videofile_path)
     fmt = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
     vw = cv2.VideoWriter(fpath_out, fmt, v_fs,
                          (int(vr.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vr.get(cv2.CAP_PROP_FRAME_HEIGHT) + spect_height)),
@@ -1468,7 +1499,8 @@ def get_tau(data_dir, calibfile, speedOfSound, points=None, d=5, micpos=None, vi
     mtx = np.array(mtx)
     dist = coeff[np.newaxis, :]
     p = np.array([U, V]).T
-    p_undist = cv2.undistortPoints(p, mtx, dist)
+    # TODO show matsumoto
+    p_undist = cv2.undistortPoints(p, mtx, dist[    0, 0])
     p_undist = p_undist[:, 0, :]
     U = p_undist[:, 0]
     V = p_undist[:, 1]

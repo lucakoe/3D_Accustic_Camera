@@ -62,24 +62,31 @@ def checkMicPosFile(path):
         print(f['result/micpos'][()])
 
 
-def wav2dat(data_dir):
-    A = scipy.io.wavfile.read(data_dir + '/audio.wav')
+def wav2dat(data_dir, input_file_path=None, output_file_path=None):
+    if input_file_path is None:
+        input_file_path = data_dir + '/audio.wav'
+    if output_file_path is None:
+        output_file_path = data_dir + '/snd.dat'
+
+    A = scipy.io.wavfile.read(input_file_path)
     max_int16 = 32767
     max_int32 = 2147483647
     X = A[1]
 
-    with open(data_dir + '/snd.dat', 'wb') as f:
+    with open(output_file_path, 'wb') as f:
         f.write(X.tobytes())
 
 
-# TODO make calibration for wide lense 2-3 times
-#    test accuracy
-def create_paramfile(data_dir, camera_calibration_file=None, image_width=640, image_height=768, daq_fs=192000,
+def create_paramfile(data_dir, image_width=640, image_height=768,
+                     daq_fs=192000,
                      daq_n_ch=4,
-                     camera_height=2.0, mic0pos=[0, 0, 0]):
+                     camera_height=2.0, mic0pos=[0, 0, 0], camera_calibration_file=None, paramfile_out_path=None):
     pressure_calib_array = []
     speedOfSound = 343.0
     camera_matrix = None
+    if paramfile_out_path is None:
+        paramfile_out_path = data_dir + '/param.h5'
+
     coeff = np.array([0, 0, 0, 0, 0], dtype=float)
     if camera_calibration_file is not None:
         with h5py.File(camera_calibration_file, mode='r') as f:
@@ -102,7 +109,7 @@ def create_paramfile(data_dir, camera_calibration_file=None, image_width=640, im
     r = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1], dtype=float)
     t = np.array([0, 0, 0], dtype=float)
 
-    with h5py.File(data_dir + '/param.h5', mode='w') as f:
+    with h5py.File(paramfile_out_path, mode='w') as f:
         f.create_dataset('/camera_param/camera_height', data=camera_height)
         f.create_dataset('/daq_param/fs', data=daq_fs)
         f.create_dataset('/daq_param/n_ch', data=daq_n_ch)
@@ -120,18 +127,23 @@ def create_paramfile(data_dir, camera_calibration_file=None, image_width=640, im
         f.create_dataset('/camera_param/depth_to_color_extrin/translation', data=t)
 
 
-def my_pick_seg_for_calib(data_dir, n_pos_check=20):
+def my_pick_seg_for_calib(data_dir, paramfile_path=None, vidfile_path=None, syncfile_path=None, n_pos_check=20):
     print('(some instruction here)')
 
-    vid_file = data_dir + '/vid.mp4'
-    vr = cv2.VideoCapture(vid_file)
+    if paramfile_path is None:
+        paramfile_path = data_dir + '/param.h5'
+    if vidfile_path is None:
+        vidfile_path = data_dir + '/vid.mp4'
+    if syncfile_path is None:
+        syncfile_path = data_dir + '/sync.csv'
 
-    paramfile = data_dir + '/param.h5'
-    with h5py.File(paramfile, mode='r') as f:
+    vr = cv2.VideoCapture(vidfile_path)
+
+    with h5py.File(paramfile_path, mode='r') as f:
         fs = f['/daq_param/fs'][()]
         n_ch = f['/daq_param/n_ch'][()]
 
-    T = np.genfromtxt(data_dir + '/sync.csv', delimiter=',')
+    T = np.genfromtxt(syncfile_path, delimiter=',')
 
     seg = tool.load_usvsegdata_ss(data_dir)
     _, I_ss = np.unique(seg[:, 4], axis=0, return_inverse=True)
@@ -194,8 +206,9 @@ def my_pick_seg_for_calib(data_dir, n_pos_check=20):
     return SEG, P
 
 
-def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
-    n_ch = 16
+def my_calc_micpos(data_dir, SEG, P, calibfile=None, audio_data_dat_path=None, n_ch=16, h5f_outpath=None):
+    if audio_data_dat_path is None:
+        audio_data_dat_path = os.path.join(data_dir, './snd.dat')
 
     paramfile = data_dir + '/param.h5'
     with h5py.File(paramfile, mode='r') as f:
@@ -205,9 +218,8 @@ def my_calc_micpos(data_dir, SEG, P, calibfile=None, h5f_outpath=None):
         pressure_calib = f['/misc/pressure_calib'][()]
         mic0pos = f['/misc/mic0pos'][()]
 
-    fpath_dat = data_dir + '/snd.dat'
 
-    with open(fpath_dat, 'rb') as fp_dat:
+    with open(audio_data_dat_path, 'rb') as fp_dat:
 
         def get_error(dx, P, SEG, data_dir, mic0pos, speedOfSound):
 
@@ -304,6 +316,6 @@ if __name__ == '__main__':
     # generateMicPosFile([13, -35, 8])
     # checkMicPosFile('usvcam_main/test_data/micpos.h5')
     # checkMicPosFile('usvcam_main/test_data/micpos_custom.h5')
-    checkMicPosFile(('./micpos.h5'))
+    checkMicPosFile((r'./data\2023-07-28-15-23-45\micpos.h5'))
     # wav2dat("./data/2023-07-11-15-14-36")
     # create_paramfile("./data/2023-07-12-10-27-46",640,480,48000,4)
